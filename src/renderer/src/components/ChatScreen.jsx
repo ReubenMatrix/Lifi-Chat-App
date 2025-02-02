@@ -109,13 +109,13 @@ const ChatScreen = ({ roomId, username, onBack }) => {
             </Group>
           </Paper>
 
-          {/* Messages Area */}
+
           <Box
             style={{
               flex: 1,
               overflowY: 'auto',
               padding: '1rem',
-              paddingBottom: '80px', // Space for input area
+              paddingBottom: '80px', 
             }}
             className="messages-container"
           >
@@ -177,7 +177,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
             </Stack>
           </Box>
 
-          {/* Input Area */}
+
           <Paper
             style={{
               background: 'rgba(255, 255, 255, 0.1)',
@@ -241,44 +241,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
   )
 }
 
-// Add this to your CSS file
-const styles = `
-  .messages-container {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
 
-  .messages-container::-webkit-scrollbar {
-    width: 6px;
-  }
 
-  .messages-container::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .messages-container::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-
-  .messages-container::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .new-message {
-    animation: fadeIn 0.3s ease-out;
-  }
-`
 
 export default ChatScreen

@@ -9,19 +9,19 @@ import {
   ScanCommand
 } from '@aws-sdk/lib-dynamodb'
 
-// Configure DynamoDB Client
+
 const client = new DynamoDBClient({
-  region: 'local',
+  region: 'us-west-2',
   endpoint: 'http://localhost:8000',
   credentials: {
-    accessKeyId: 'dummy',
-    secretAccessKey: 'dummy'
+    accessKeyId: 'AKIA5CBGTFZWWHDWKUOW',
+    secretAccessKey: 'Kx6t8Nwyd5SEcOs2aEUe09QKQs3/lCnYI2vul/0N'
   }
 })
 
 const dynamodb = DynamoDBDocumentClient.from(client)
 
-// Check if table exists
+
 async function tableExists(tableName) {
   try {
     await client.send(new DescribeTableCommand({ TableName: tableName }))
@@ -34,10 +34,9 @@ async function tableExists(tableName) {
   }
 }
 
-// Initialize tables
+
 async function initializeTables() {
   try {
-    // Check and create Rooms table if it doesn't exist
     const roomsTableExists = await tableExists('Rooms')
     if (!roomsTableExists) {
       console.log('Creating Rooms table...')
@@ -59,7 +58,7 @@ async function initializeTables() {
       console.log('Rooms table already exists')
     }
 
-    // Check and create Messages table if it doesn't exist
+
     const messagesTableExists = await tableExists('Messages')
     if (!messagesTableExists) {
       console.log('Creating Messages table...')
@@ -89,7 +88,7 @@ async function initializeTables() {
   }
 }
 
-// Database Operations with better error handling
+
 ipcMain.handle('create-room', async (_, roomName) => {
   try {
     await dynamodb.send(new PutCommand({
@@ -110,7 +109,7 @@ ipcMain.handle('get-rooms', async () => {
   try {
     const result = await dynamodb.send(new ScanCommand({
       TableName: 'Rooms',
-      ConsistentRead: true // Ensure we get the latest data
+      ConsistentRead: true 
     }))
     return result.Items || []
   } catch (error) {
@@ -147,7 +146,7 @@ ipcMain.handle('get-messages', async (_, roomId) => {
         ':rid': roomId
       },
       ScanIndexForward: true,
-      ConsistentRead: true // Ensure we get the latest messages
+      ConsistentRead: true
     }))
     return result.Items || []
   } catch (error) {

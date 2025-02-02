@@ -160,17 +160,16 @@ const RoomsScreen = ({ onJoinRoom }) => {
               </Group>
             </div>
   
-            {/* Rooms Grid */}
+
             <div style={{ 
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', // Responsive grid
+              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', 
               gap: '2rem',
               padding: '1rem',
               width: '100%',
               justifyItems: 'center'
             }}>
               {isLoading ? (
-                // Loading skeleton
                 [...Array(3)].map((_, index) => (
                   <Paper
                     key={index}
@@ -195,7 +194,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
                     textAlign: 'center',
                     background: 'rgba(255, 255, 255, 0.1)',
                     backdropFilter: 'blur(10px)',
-                    gridColumn: '1 / -1', // Span all columns
+                    gridColumn: '1 / -1',
                     width: '100%'
                   }}
                 >
@@ -212,33 +211,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
   );
 };
 
-// Add this to your CSS
-const styles = `
-  @keyframes pulse {
-    0% { opacity: 0.3; }
-    50% { opacity: 0.5; }
-    100% { opacity: 0.3; }
-  }
 
-  .glass-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-    border-color: rgba(255, 255, 255, 0.3);
-  }
 
-  @media (max-width: 992px) {
-    .mantine-Grid-col {
-      flex: 0 0 50% !important;
-      max-width: 50% !important;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .mantine-Grid-col {
-      flex: 0 0 100% !important;
-      max-width: 100% !important;
-    }
-  }
-`;
 
 export default RoomsScreen;
