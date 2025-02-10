@@ -4,9 +4,19 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
+    build: {
+      rollupOptions: {
+        external: ['electron', 'path', '@electron-toolkit/utils']
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   preload: {
+    build: {
+      rollupOptions: {
+        external: ['electron']
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   renderer: {

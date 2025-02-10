@@ -1,103 +1,84 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { DynamoDBClient, DescribeTableCommand, CreateTableCommand } from '@aws-sdk/client-dynamodb'
-import { 
-  DynamoDBDocumentClient, 
-  PutCommand, 
-  QueryCommand, 
-  ScanCommand
-} from '@aws-sdk/lib-dynamodb'
+import fs from 'fs'
+import path from 'path'
 
+// Get the project root directory
+const projectRoot = process.cwd()
+const dbFile = path.join(projectRoot, 'data', 'db.json')
 
-const client = new DynamoDBClient({
-  region: 'us-west-2',
-  endpoint: 'http://localhost:8000',
-  credentials: {
-    accessKeyId: 'AKIA5CBGTFZWWHDWKUOW',
-    secretAccessKey: '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'
+// Ensure data directory exists
+if (!fs.existsSync(path.join(projectRoot, 'data'))) {
+  fs.mkdirSync(path.join(projectRoot, 'data'))
+}
+
+// Initialize database with default data
+const defaultData = {
+  rooms: [],
+  messages: []
+}
+
+// Simple database implementation
+class Database {
+  constructor(filePath, defaultData) {
+    this.filePath = filePath
+    this.defaultData = defaultData
+    this.data = null
   }
-})
 
-const dynamodb = DynamoDBDocumentClient.from(client)
-
-
-async function tableExists(tableName) {
-  try {
-    await client.send(new DescribeTableCommand({ TableName: tableName }))
-    return true
-  } catch (error) {
-    if (error.name === 'ResourceNotFoundException') {
-      return false
+  async read() {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const data = await fs.promises.readFile(this.filePath, 'utf8')
+        this.data = JSON.parse(data)
+      } else {
+        this.data = this.defaultData
+      }
+    } catch (error) {
+      console.error('Error reading database:', error)
+      this.data = this.defaultData
     }
+  }
+
+  async write() {
+    try {
+      await fs.promises.writeFile(this.filePath, JSON.stringify(this.data, null, 2))
+    } catch (error) {
+      console.error('Error writing database:', error)
+      throw error
+    }
+  }
+}
+
+const db = new Database(dbFile, defaultData)
+
+// Helper function to read/write database
+async function initializeDatabase() {
+  try {
+    await db.read()
+    await db.write()
+    console.log('Database initialized successfully')
+    console.log('Database file location:', dbFile) // This will show the database location
+  } catch (error) {
+    console.error('Error initializing database:', error)
     throw error
   }
 }
 
-
-async function initializeTables() {
-  try {
-    const roomsTableExists = await tableExists('Rooms')
-    if (!roomsTableExists) {
-      console.log('Creating Rooms table...')
-      await client.send(new CreateTableCommand({
-        TableName: 'Rooms',
-        KeySchema: [
-          { AttributeName: 'room_id', KeyType: 'HASH' }
-        ],
-        AttributeDefinitions: [
-          { AttributeName: 'room_id', AttributeType: 'S' }
-        ],
-        ProvisionedThroughput: {
-          ReadCapacityUnits: 5,
-          WriteCapacityUnits: 5
-        }
-      }))
-      console.log('Rooms table created successfully')
-    } else {
-      console.log('Rooms table already exists')
-    }
-
-
-    const messagesTableExists = await tableExists('Messages')
-    if (!messagesTableExists) {
-      console.log('Creating Messages table...')
-      await client.send(new CreateTableCommand({
-        TableName: 'Messages',
-        KeySchema: [
-          { AttributeName: 'room_id', KeyType: 'HASH' },
-          { AttributeName: 'timestamp', KeyType: 'RANGE' }
-        ],
-        AttributeDefinitions: [
-          { AttributeName: 'room_id', AttributeType: 'S' },
-          { AttributeName: 'timestamp', AttributeType: 'N' }
-        ],
-        ProvisionedThroughput: {
-          ReadCapacityUnits: 5,
-          WriteCapacityUnits: 5
-        }
-      }))
-      console.log('Messages table created successfully')
-    } else {
-      console.log('Messages table already exists')
-    }
-
-  } catch (error) {
-    console.error('Error initializing tables:', error)
-    throw error
-  }
-}
-
-
+// IPC Handlers
 ipcMain.handle('create-room', async (_, roomName) => {
   try {
-    await dynamodb.send(new PutCommand({
-      TableName: 'Rooms',
-      Item: {
-        room_id: roomName,
-        created_at: Date.now()
-      }
-    }))
+    await db.read()
+    
+    const newRoom = {
+      room_id: roomName,
+      created_at: Date.now()
+    }
+    
+    db.data.rooms.push(newRoom)
+    await db.write()
+    
     return { success: true }
   } catch (error) {
     console.error('Error creating room:', error)
@@ -107,11 +88,8 @@ ipcMain.handle('create-room', async (_, roomName) => {
 
 ipcMain.handle('get-rooms', async () => {
   try {
-    const result = await dynamodb.send(new ScanCommand({
-      TableName: 'Rooms',
-      ConsistentRead: true 
-    }))
-    return result.Items || []
+    await db.read()
+    return db.data.rooms
   } catch (error) {
     console.error('Error getting rooms:', error)
     return []
@@ -120,17 +98,19 @@ ipcMain.handle('get-rooms', async () => {
 
 ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
   try {
-    const timestamp = Date.now()
-    await dynamodb.send(new PutCommand({
-      TableName: 'Messages',
-      Item: {
-        room_id: roomId,
-        timestamp,
-        username,
-        message
-      }
-    }))
-    return { success: true, timestamp }
+    await db.read()
+    
+    const newMessage = {
+      room_id: roomId,
+      timestamp: Date.now(),
+      username,
+      message
+    }
+    
+    db.data.messages.push(newMessage)
+    await db.write()
+    
+    return { success: true, timestamp: newMessage.timestamp }
   } catch (error) {
     console.error('Error sending message:', error)
     return { success: false, error: error.message }
@@ -139,22 +119,29 @@ ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
 
 ipcMain.handle('get-messages', async (_, roomId) => {
   try {
-    const result = await dynamodb.send(new QueryCommand({
-      TableName: 'Messages',
-      KeyConditionExpression: 'room_id = :rid',
-      ExpressionAttributeValues: {
-        ':rid': roomId
-      },
-      ScanIndexForward: true,
-      ConsistentRead: true
-    }))
-    return result.Items || []
+    await db.read()
+    
+    return db.data.messages
+      .filter(msg => msg.room_id === roomId)
+      .sort((a, b) => a.timestamp - b.timestamp)
   } catch (error) {
     console.error('Error getting messages:', error)
     return []
   }
 })
 
+// Add data validation
+function validateMessage(message) {
+  if (!message.roomId || !message.username || !message.message) {
+    throw new Error('Invalid message format')
+  }
+  if (message.message.length > 1000) {
+    throw new Error('Message too long')
+  }
+  return true
+}
+
+// Window management
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 900,
@@ -177,13 +164,15 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 // Application initialization
 app.whenReady().then(async () => {
   try {
     console.log('Initializing database...')
-    await initializeTables()
+    await initializeDatabase()
     console.log('Database initialization complete')
 
     electronApp.setAppUserModelId('com.electron.chat')
@@ -202,8 +191,37 @@ app.whenReady().then(async () => {
   }
 })
 
+// Cleanup on app quit
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
+  }
+})
+
+// Add data backup functionality
+async function backupDatabase() {
+  try {
+    const backupPath = path.join(projectRoot, 'data', `backup-${Date.now()}.json`)
+    await fs.promises.copyFile(dbFile, backupPath)
+    console.log('Database backup created successfully at:', backupPath)
+  } catch (error) {
+    console.error('Error creating database backup:', error)
+  }
+}
+
+// Create periodic backups
+setInterval(backupDatabase, 24 * 60 * 60 * 1000) // Daily backup
+
+// Add IPC handler to get database location
+ipcMain.handle('get-db-path', () => dbFile)
+
+// Add IPC handler to open database location
+ipcMain.handle('open-db-location', async () => {
+  try {
+    await shell.showItemInFolder(dbFile)
+    return { success: true }
+  } catch (error) {
+    console.error('Error opening database location:', error)
+    return { success: false, error: error.message }
   }
 })

@@ -1,0 +1,38 @@
+{
+  "rooms": [
+    {
+      "room_id": "Room-1739183522233",
+      "created_at": 1739183522240
+    },
+    {
+      "room_id": "Room-1739183560912",
+      "created_at": 1739183560920
+    }
+  ],
+  "messages": [
+    {
+      "room_id": "Room-1739183522233",
+      "timestamp": 1739183530919,
+      "username": "reuben",
+      "message": "nice"
+    },
+    {
+      "room_id": "Room-1739183522233",
+      "timestamp": 1739183535563,
+      "username": "rohan",
+      "message": "wow"
+    },
+    {
+      "room_id": "Room-1739183560912",
+      "timestamp": 1739183569468,
+      "username": "rohan",
+      "message": "hmmmm"
+    },
+    {
+      "room_id": "Room-1739183560912",
+      "timestamp": 1739183573212,
+      "username": "reuben",
+      "message": "heyyy"
+    }
+  ]
+}
