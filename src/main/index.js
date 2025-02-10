@@ -4,11 +4,9 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 import path from 'path'
 
-// Get the project root directory
 const projectRoot = process.cwd()
 const dbFile = path.join(projectRoot, 'data', 'db.json')
 
-// Ensure data directory exists
 if (!fs.existsSync(path.join(projectRoot, 'data'))) {
   fs.mkdirSync(path.join(projectRoot, 'data'))
 }
@@ -19,7 +17,6 @@ const defaultData = {
   messages: []
 }
 
-// Simple database implementation
 class Database {
   constructor(filePath, defaultData) {
     this.filePath = filePath
@@ -53,20 +50,18 @@ class Database {
 
 const db = new Database(dbFile, defaultData)
 
-// Helper function to read/write database
 async function initializeDatabase() {
   try {
     await db.read()
     await db.write()
     console.log('Database initialized successfully')
-    console.log('Database file location:', dbFile) // This will show the database location
+    console.log('Database file location:', dbFile) 
   } catch (error) {
     console.error('Error initializing database:', error)
     throw error
   }
 }
 
-// IPC Handlers
 ipcMain.handle('create-room', async (_, roomName) => {
   try {
     await db.read()
@@ -130,18 +125,6 @@ ipcMain.handle('get-messages', async (_, roomId) => {
   }
 })
 
-// Add data validation
-function validateMessage(message) {
-  if (!message.roomId || !message.username || !message.message) {
-    throw new Error('Invalid message format')
-  }
-  if (message.message.length > 1000) {
-    throw new Error('Message too long')
-  }
-  return true
-}
-
-// Window management
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 900,
@@ -168,7 +151,6 @@ function createWindow() {
   return mainWindow
 }
 
-// Application initialization
 app.whenReady().then(async () => {
   try {
     console.log('Initializing database...')
@@ -191,14 +173,12 @@ app.whenReady().then(async () => {
   }
 })
 
-// Cleanup on app quit
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
-// Add data backup functionality
 async function backupDatabase() {
   try {
     const backupPath = path.join(projectRoot, 'data', `backup-${Date.now()}.json`)
@@ -209,13 +189,10 @@ async function backupDatabase() {
   }
 }
 
-// Create periodic backups
-setInterval(backupDatabase, 24 * 60 * 60 * 1000) // Daily backup
+setInterval(backupDatabase, 24 * 60 * 60 * 1000) 
 
-// Add IPC handler to get database location
 ipcMain.handle('get-db-path', () => dbFile)
 
-// Add IPC handler to open database location
 ipcMain.handle('open-db-location', async () => {
   try {
     await shell.showItemInFolder(dbFile)
