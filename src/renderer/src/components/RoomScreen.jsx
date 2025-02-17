@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Stack, Title, Paper, Container, Grid, Text, Group } from '@mantine/core';
+import { Button, Stack, Title, Paper, Container, Grid, Text, Group, TextInput } from '@mantine/core';
 import { motion } from 'framer-motion';
-import { FiPlus, FiUsers, FiMessageSquare, FiHash, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiMessageSquare, FiHash, FiRefreshCw, FiTrash } from 'react-icons/fi';
 
 const RoomCard = ({ room, onClick }) => (
   <motion.div
@@ -59,6 +59,8 @@ const RoomCard = ({ room, onClick }) => (
 const RoomsScreen = ({ onJoinRoom }) => {
   const [rooms, setRooms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [listItems, setListItems] = useState([]);
+  const [newItem, setNewItem] = useState('');
 
   const loadRooms = async () => {
     setIsLoading(true);
@@ -74,7 +76,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
 
   useEffect(() => {
     loadRooms();
-  }, []); // Only load rooms once when component mounts
+  }, []);
 
   const createRoom = async () => {
     const roomName = `Room-${Date.now()}`;
@@ -82,136 +84,218 @@ const RoomsScreen = ({ onJoinRoom }) => {
     await loadRooms(); 
   };
 
+  const addItem = () => {
+    if (newItem.trim()) {
+      setListItems([...listItems, { id: Date.now(), text: newItem.trim() }]);
+      setNewItem('');
+    }
+  };
+
+  const removeItem = (id) => {
+    setListItems(listItems.filter(item => item.id !== id));
+  };
+
   return (
-    <div 
-      style={{ 
-        minHeight: '100vh', 
-        width: '100vw',
-        padding: '2rem',
-        display: 'flex',
-        alignItems: 'flex-start', // Changed from center to flex-start
-        justifyContent: 'center',
-        overflow: 'hidden' // Added to prevent horizontal scroll
-      }}>
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '20px',
-          textAlign: 'center',
-          overflowY: 'auto', // Added to enable vertical scrolling
-          maxHeight: 'calc(100vh - 4rem)' // Subtract padding from viewport height
-        }}
-      >
-        <Container styles={{ width: '100%', maxWidth: '1200px' }}> {/* Increased maxWidth */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+    <div style={{ 
+      minHeight: '100vh', 
+      width: '100vw',
+      padding: '2rem',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      overflow: 'hidden'
+    }}>
+      <Container styles={{ width: '100%', maxWidth: '1400px' }}>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Paper
+            p="sm"
+            style={{
+              marginBottom: '2rem',
+              background: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              width: '100%',
+            }}
           >
-            {/* Header Section */}
-            <div style={{ marginBottom: '2rem', position: 'sticky', top: 0, zIndex: 10 }}>
-              <Paper
-                p="sm"
-                style={{
-                  marginBottom: '2rem',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  width: '100%',
-                }}
-              >
-                <Title order={1} style={{ color: '#fff' }}>
-                  Available Rooms
-                </Title>
-              </Paper>
-  
-              <Group position="center" style={{ width: '100%' }}>
+            <Title order={1} style={{ color: '#fff' }}>
+              Available Rooms
+            </Title>
+          </Paper>
+
+          <Group position="center" style={{ width: '100%', marginBottom: '2rem' }}>
+            <Button
+              onClick={createRoom}
+              size="lg"
+              style={{
+                background: 'white',
+                padding: '15px 20px',
+                borderRadius: '10px',
+                border: 'none',
+              }}
+            >
+              Create New Room
+            </Button>
+            <Button
+              onClick={loadRooms}
+              size="lg"
+              variant="outline"
+              color="white"
+              style={{ 
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                background: 'none',
+                color: 'white',
+                padding: '15px 20px',
+                borderRadius: '10px',
+              }}
+            >
+              Refresh Rooms
+            </Button>
+          </Group>
+
+          {/* Main Content Area */}
+          <div style={{
+            display: 'flex',
+            gap: '2rem',
+            width: '100%',
+          }}>
+            {/* Rooms Grid */}
+            <div style={{ flex: 2 }}>
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', 
+                gap: '2rem',
+                width: '100%',
+                justifyItems: 'center'
+              }}>
+                {isLoading ? (
+                  [...Array(3)].map((_, index) => (
+                    <Paper
+                      key={index}
+                      p="xl"
+                      style={{
+                        height: '200px',
+                        width: '500px',
+                        opacity: 0.5,
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        animation: 'pulse 1.5s infinite'
+                      }}
+                    />
+                  ))
+                ) : rooms.length > 0 ? (
+                  rooms.map((room) => (
+                    <RoomCard key={room.room_id} room={room} onClick={() => onJoinRoom(room.room_id)} />
+                  ))
+                ) : (
+                  <Paper
+                    p="xl"
+                    style={{ 
+                      textAlign: 'center',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(10px)',
+                      gridColumn: '1 / -1',
+                      width: '100%'
+                    }}
+                  >
+                    <Text color="white" size="lg">
+                      No rooms available. Create one to get started!
+                    </Text>
+                  </Paper>
+                )}
+              </div>
+            </div>
+
+            <Paper
+              style={{
+                flex: 1,
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '15px',
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                height: 'fit-content',
+                maxHeight: 'calc(100vh - 15rem)',
+                position: 'sticky',
+                top: '2rem'
+              }}
+            >
+
+              <Group spacing="sm" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <TextInput
+                  placeholder="Add new item..."
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addItem()}
+                  style={{ flex: 1 }}
+                  styles={{
+                    input: {
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: 'white',
+                      height: '35px',
+                      borderRadius: '10px',
+                      '&::placeholder': {
+                        color: 'rgba(255, 255, 255, 0.5)'
+                      },
+                      '&:focus': {
+                        borderColor: 'rgba(255, 255, 255, 0.3)'
+                      }
+                    }
+                  }}
+                />
                 <Button
-                  onClick={createRoom}
-                  size="lg"
+                  onClick={addItem}
+                  disabled={!newItem.trim()}
                   style={{
                     background: 'white',
-                    padding: '15px 20px',
+                    color: 'black',
                     borderRadius: '10px',
-                    border: 'none',
+                    height: '35px',
                   }}
                 >
-                  Create New Room
-                </Button>
-                <Button
-                  onClick={loadRooms}
-                  size="lg"
-                  variant="outline"
-                  color="white"
-                  style={{ 
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    background: 'none',
-                    color: 'white',
-                    padding: '15px 20px',
-                    borderRadius: '10px',
-                  }}
-                >
-                  Refresh Rooms
+                  <FiPlus size={16}  />
                 </Button>
               </Group>
-            </div>
-  
 
-            <div style={{ 
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', 
-              gap: '2rem',
-              padding: '1rem',
-              width: '100%',
-              justifyItems: 'center'
-            }}>
-              {isLoading ? (
-                [...Array(3)].map((_, index) => (
+              <Stack spacing="sm" style={{ overflowY: 'auto' }}>
+                {listItems.map((item) => (
                   <Paper
-                    key={index}
-                    p="xl"
+                    key={item.id}
+                    p="sm"
                     style={{
-                      height: '200px',
-                      width: '500px',
-                      opacity: 0.5,
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      animation: 'pulse 1.5s infinite'
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}
-                  />
-                ))
-              ) : rooms.length > 0 ? (
-                rooms.map((room) => (
-                  <RoomCard key={room.room_id} room={room} onClick={() => onJoinRoom(room.room_id)} />
-                ))
-              ) : (
-                <Paper
-                  p="xl"
-                  style={{ 
-                    textAlign: 'center',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    backdropFilter: 'blur(10px)',
-                    gridColumn: '1 / -1',
-                    width: '100%'
-                  }}
-                >
-                  <Text color="white" size="lg">
-                    No rooms available. Create one to get started!
-                  </Text>
-                </Paper>
-              )}
-            </div>
-          </motion.div>
-        </Container>
-      </div>
+                  >
+                    <Text style={{ color: 'white', padding: '10px' }}>{item.text}</Text>
+                    <Button
+                      variant="subtle"
+                      color="red"
+                      bg={'none'}
+                      onClick={() => removeItem(item.id)}
+                      style={{ padding: '5px', borderRadius: '10px' }}
+                    >
+                      <FiTrash size={14} style={{ borderRadius: '10px' }} />
+                    </Button>
+                  </Paper>
+                ))}
+
+              </Stack>
+            </Paper>
+          </div>
+        </motion.div>
+      </Container>
     </div>
   );
 };
-
-
-
 
 export default RoomsScreen;
