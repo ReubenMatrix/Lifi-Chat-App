@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Stack, Title, Paper, Container, Grid, Text, Group, TextInput } from '@mantine/core';
+import { Button, Stack, Title, Paper, Container, Grid, Text, Group, TextInput, Menu } from '@mantine/core';
 import { motion } from 'framer-motion';
-import { FiPlus, FiUsers, FiMessageSquare, FiHash, FiRefreshCw, FiTrash } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiMessageSquare, FiHash, FiRefreshCw, FiTrash, FiSearch } from 'react-icons/fi';
 
 const RoomCard = ({ room, onClick }) => (
   <motion.div
@@ -81,35 +81,54 @@ const RoomsScreen = ({ onJoinRoom }) => {
   const createRoom = async () => {
     const roomName = `Room-${Date.now()}`;
     await window.api.createRoom(roomName);
-    await loadRooms(); 
+    await loadRooms();
   };
 
-  const addItem = () => {
-    if (newItem.trim()) {
-      setListItems([...listItems, { id: Date.now(), text: newItem.trim() }]);
-      setNewItem('');
-    }
-  };
 
-  const removeItem = (id) => {
-    setListItems(listItems.filter(item => item.id !== id));
-  };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
+    <div style={{
+      minHeight: '100vh',
       width: '100vw',
       padding: '2rem',
       display: 'flex',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      overflow: 'hidden'
+      overflow: 'auto',
+      maxHeight: '100vh'
     }}>
-      <Container styles={{ width: '100%', maxWidth: '1400px' }}>
+      <Container
+        styles={{
+          width: '100%',
+          maxWidth: '1400px',
+          height: '100%',
+          overflow: 'auto',
+          root: {
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              '&:hover': {
+                background: 'rgba(255, 255, 255, 0.4)',
+              },
+            },
+          },
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
+          style={{
+            height: '100%',
+            overflow: 'auto'
+          }}
         >
           <Paper
             p="sm"
@@ -119,6 +138,9 @@ const RoomsScreen = ({ onJoinRoom }) => {
               backdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               width: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
             <Title order={1} style={{ color: '#fff' }}>
@@ -126,7 +148,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
             </Title>
           </Paper>
 
-          <Group position="center" style={{ width: '100%', marginBottom: '2rem' }}>
+          <Group position="center" style={{ width: '100%', marginBottom: '2rem', display: 'flex', justifyContent: 'space-evenly' }}>
             <Button
               onClick={createRoom}
               size="lg"
@@ -139,12 +161,12 @@ const RoomsScreen = ({ onJoinRoom }) => {
             >
               Create New Room
             </Button>
+
             <Button
-              onClick={loadRooms}
               size="lg"
               variant="outline"
               color="white"
-              style={{ 
+              style={{
                 borderColor: 'rgba(255, 255, 255, 0.2)',
                 background: 'none',
                 color: 'white',
@@ -152,21 +174,131 @@ const RoomsScreen = ({ onJoinRoom }) => {
                 borderRadius: '10px',
               }}
             >
-              Refresh Rooms
+              <Group>
+                <span>Refresh Rooms</span>
+              </Group>
             </Button>
+
+            <Menu
+              shadow="md"
+              width={200}
+              position="bottom-end"
+              styles={(theme) => ({
+                dropdown: {
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  zIndex: 1000,
+                  position: 'absolute',
+                },
+                item: {
+                  '&:hover': {
+                    backgroundColor: theme.colors.gray[1],
+                  },
+                }
+              })}
+              offset={5}
+              withArrow
+              trigger="hover"
+            >
+              <Menu.Target>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  color="white"
+                  style={{
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: 'white',
+                    padding: '15px 20px',
+                    borderRadius: '10px',
+                    position: 'relative', 
+                  }}
+                >
+                  Select Port
+                </Button>
+              </Menu.Target>
+
+              <Menu.Dropdown style={{
+                padding: '10px', borderRadius: '10px', borderColor: 'rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: 'white',
+              }}>
+                <Menu.Label style={{ color: 'white', fontWeight: 500, width: '100%', padding: '10px' }}>
+                  Available Ports
+                </Menu.Label>
+                <Menu.Item
+                  style={{
+                    color: 'white',
+                    width: '100%',
+                    borderRadius: '5px',
+                    background: '#228BE6',
+                    border: 'none',
+                 
+                    '&:hover': {
+                      backgroundColor: '#1c7ed6',
+                    }
+                  }}
+                  onClick={() => {
+                    console.log('COM4');
+                  }}
+                >
+                  COM4
+                </Menu.Item>
+
+                <Menu.Item
+                  style={{
+                    color: 'white',
+                    width: '100%',
+                    borderRadius: '5px',
+                    background: '#228BE6',
+                    border: 'none',
+                 
+                    '&:hover': {
+                      backgroundColor: '#1c7ed6',
+                    }
+                  }}
+                  onClick={() => {
+                    console.log('COM5');
+                  }}
+                >
+                  COM5
+                </Menu.Item>
+    
+
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<FiSearch size={14} />}
+                  style={{
+                    borderRadius: '5px',
+                    marginTop: '5px',
+                    color: 'white',
+                    border: 'black',
+                    width: '100%',
+                    display: 'flex',
+                    background: '#228BE6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                    }
+                  }}
+                >
+                  <Button style={{ backgroundColor: 'transparent', border: 'none', color: 'white' }}>Scan Now</Button>
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
 
-          {/* Main Content Area */}
           <div style={{
             display: 'flex',
             gap: '2rem',
             width: '100%',
           }}>
-            {/* Rooms Grid */}
             <div style={{ flex: 2 }}>
-              <div style={{ 
+              <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
                 gap: '2rem',
                 width: '100%',
                 justifyItems: 'center'
@@ -192,7 +324,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
                 ) : (
                   <Paper
                     p="xl"
-                    style={{ 
+                    style={{
                       textAlign: 'center',
                       background: 'rgba(255, 255, 255, 0.1)',
                       backdropFilter: 'blur(10px)',
@@ -207,90 +339,6 @@ const RoomsScreen = ({ onJoinRoom }) => {
                 )}
               </div>
             </div>
-
-            <Paper
-              style={{
-                flex: 1,
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '15px',
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                height: 'fit-content',
-                maxHeight: 'calc(100vh - 15rem)',
-                position: 'sticky',
-                top: '2rem'
-              }}
-            >
-
-              <Group spacing="sm" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                <TextInput
-                  placeholder="Add new item..."
-                  value={newItem}
-                  onChange={(e) => setNewItem(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addItem()}
-                  style={{ flex: 1 }}
-                  styles={{
-                    input: {
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      color: 'white',
-                      height: '35px',
-                      borderRadius: '10px',
-                      '&::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.5)'
-                      },
-                      '&:focus': {
-                        borderColor: 'rgba(255, 255, 255, 0.3)'
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  onClick={addItem}
-                  disabled={!newItem.trim()}
-                  style={{
-                    background: 'white',
-                    color: 'black',
-                    borderRadius: '10px',
-                    height: '35px',
-                  }}
-                >
-                  <FiPlus size={16}  />
-                </Button>
-              </Group>
-
-              <Stack spacing="sm" style={{ overflowY: 'auto' }}>
-                {listItems.map((item) => (
-                  <Paper
-                    key={item.id}
-                    p="sm"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '10px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <Text style={{ color: 'white', padding: '10px' }}>{item.text}</Text>
-                    <Button
-                      variant="subtle"
-                      color="red"
-                      bg={'none'}
-                      onClick={() => removeItem(item.id)}
-                      style={{ padding: '5px', borderRadius: '10px' }}
-                    >
-                      <FiTrash size={14} style={{ borderRadius: '10px' }} />
-                    </Button>
-                  </Paper>
-                ))}
-
-              </Stack>
-            </Paper>
           </div>
         </motion.div>
       </Container>
