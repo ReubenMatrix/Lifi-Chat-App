@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 import path from 'path'
+const { SerialPort } = require('serialport')
 
 const projectRoot = process.cwd()
 const dbFile = path.join(projectRoot, 'data', 'db.json')
@@ -55,7 +56,7 @@ async function initializeDatabase() {
     await db.read()
     await db.write()
     console.log('Database initialized successfully')
-    console.log('Database file location:', dbFile) 
+    console.log('Database file location:', dbFile)
   } catch (error) {
     console.error('Error initializing database:', error)
     throw error
@@ -65,15 +66,15 @@ async function initializeDatabase() {
 ipcMain.handle('create-room', async (_, roomName) => {
   try {
     await db.read()
-    
+
     const newRoom = {
       room_id: roomName,
       created_at: Date.now()
     }
-    
+
     db.data.rooms.push(newRoom)
     await db.write()
-    
+
     return { success: true }
   } catch (error) {
     console.error('Error creating room:', error)
@@ -94,17 +95,17 @@ ipcMain.handle('get-rooms', async () => {
 ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
   try {
     await db.read()
-    
+
     const newMessage = {
       room_id: roomId,
       timestamp: Date.now(),
       username,
       message
     }
-    
+
     db.data.messages.push(newMessage)
     await db.write()
-    
+
     return { success: true, timestamp: newMessage.timestamp }
   } catch (error) {
     console.error('Error sending message:', error)
@@ -115,9 +116,9 @@ ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
 ipcMain.handle('get-messages', async (_, roomId) => {
   try {
     await db.read()
-    
+
     return db.data.messages
-      .filter(msg => msg.room_id === roomId)
+      .filter((msg) => msg.room_id === roomId)
       .sort((a, b) => a.timestamp - b.timestamp)
   } catch (error) {
     console.error('Error getting messages:', error)
@@ -189,7 +190,7 @@ async function backupDatabase() {
   }
 }
 
-setInterval(backupDatabase, 24 * 60 * 60 * 1000) 
+setInterval(backupDatabase, 24 * 60 * 60 * 1000)
 
 ipcMain.handle('get-db-path', () => dbFile)
 
@@ -200,5 +201,26 @@ ipcMain.handle('open-db-location', async () => {
   } catch (error) {
     console.error('Error opening database location:', error)
     return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('scan-ports', async () => {
+  try {
+    const ports = await SerialPort.list()
+    const arduinoPorts = ports.filter((port) => {
+      const manufacturer = (port.manufacturer || '').toLowerCase()
+      return (
+        manufacturer.includes('arduino') ||
+        manufacturer.includes('wch') || // CH340 chip
+        manufacturer.includes('ftdi')
+      )
+    })
+
+    if (arduinoPorts.length > 0) {
+      return arduinoPorts.map((port) => port.path)
+    }
+    return 'NO PORTS Detected'
+  } catch (error) {
+    return error.message
   }
 })

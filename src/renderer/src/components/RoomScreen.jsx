@@ -1,7 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Stack, Title, Paper, Container, Grid, Text, Group, TextInput, Menu } from '@mantine/core';
-import { motion } from 'framer-motion';
-import { FiPlus, FiUsers, FiMessageSquare, FiHash, FiRefreshCw, FiTrash, FiSearch } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react'
+import {
+  Button,
+  Stack,
+  Title,
+  Paper,
+  Container,
+  Grid,
+  Text,
+  Group,
+  TextInput,
+  Menu
+} from '@mantine/core'
+import { motion } from 'framer-motion'
+import {
+  FiPlus,
+  FiUsers,
+  FiMessageSquare,
+  FiHash,
+  FiRefreshCw,
+  FiTrash,
+  FiSearch
+} from 'react-icons/fi'
+import { scanForArduinoPorts } from './../helper/postScanning'
 
 const RoomCard = ({ room, onClick }) => (
   <motion.div
@@ -26,7 +46,7 @@ const RoomCard = ({ room, onClick }) => (
         overflow: 'hidden',
         background: 'rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        border: '1px solid rgba(255, 255, 255, 0.2)'
       }}
     >
       <div
@@ -49,54 +69,69 @@ const RoomCard = ({ room, onClick }) => (
         </Title>
         <Group spacing="xs" align="center">
           <FiUsers size={16} color="#fff" />
-          <Text color="white" size="sm">Click to Join</Text>
+          <Text color="white" size="sm">
+            Click to Join
+          </Text>
         </Group>
       </Stack>
     </Paper>
   </motion.div>
-);
+)
 
 const RoomsScreen = ({ onJoinRoom }) => {
-  const [rooms, setRooms] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [listItems, setListItems] = useState([]);
-  const [newItem, setNewItem] = useState('');
-
-  const loadRooms = async () => {
-    setIsLoading(true);
-    try {
-      const roomsList = await window.api.getRooms();
-      setRooms(roomsList);
-    } catch (error) {
-      console.error('Error loading rooms:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [rooms, setRooms] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [listPorts, setListPorts] = useState([])
+  const [port, setPort] = useState('')
 
   useEffect(() => {
-    loadRooms();
-  }, []);
+    const initializePorts = async () => {
+      const ports = await scanForArduinoPorts()
+      setListPorts(ports)
+    }
+    initializePorts()
+  }, [])
+
+  const loadRooms = async () => {
+    setIsLoading(true)
+    try {
+      const roomsList = await window.api.getRooms()
+      setRooms(roomsList)
+    } catch (error) {
+      console.error('Error loading rooms:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRooms()
+  }, [])
 
   const createRoom = async () => {
-    const roomName = `Room-${Date.now()}`;
-    await window.api.createRoom(roomName);
-    await loadRooms();
-  };
+    const roomName = `Room-${Date.now()}`
+    await window.api.createRoom(roomName)
+    await loadRooms()
+  }
 
-
+  const handleScanPorts = async () => {
+    const ports = await scanForArduinoPorts()
+    setListPorts(ports)
+  }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100vw',
-      padding: '2rem',
-      display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'center',
-      overflow: 'auto',
-      maxHeight: '100vh'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        width: '100vw',
+        padding: '2rem',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        overflow: 'auto',
+        maxHeight: '100vh'
+      }}
+    >
       <Container
         styles={{
           width: '100%',
@@ -105,20 +140,20 @@ const RoomsScreen = ({ onJoinRoom }) => {
           overflow: 'auto',
           root: {
             '&::-webkit-scrollbar': {
-              width: '8px',
+              width: '8px'
             },
             '&::-webkit-scrollbar-track': {
               background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
+              borderRadius: '4px'
             },
             '&::-webkit-scrollbar-thumb': {
               background: 'rgba(255, 255, 255, 0.3)',
               borderRadius: '4px',
               '&:hover': {
-                background: 'rgba(255, 255, 255, 0.4)',
-              },
-            },
-          },
+                background: 'rgba(255, 255, 255, 0.4)'
+              }
+            }
+          }
         }}
       >
         <motion.div
@@ -140,7 +175,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
               width: '100%',
               display: 'flex',
               justifyContent: 'center',
-              alignItems: 'center',
+              alignItems: 'center'
             }}
           >
             <Title order={1} style={{ color: '#fff' }}>
@@ -148,7 +183,15 @@ const RoomsScreen = ({ onJoinRoom }) => {
             </Title>
           </Paper>
 
-          <Group position="center" style={{ width: '100%', marginBottom: '2rem', display: 'flex', justifyContent: 'space-evenly' }}>
+          <Group
+            position="center"
+            style={{
+              width: '100%',
+              marginBottom: '2rem',
+              display: 'flex',
+              justifyContent: 'space-evenly'
+            }}
+          >
             <Button
               onClick={createRoom}
               size="lg"
@@ -156,7 +199,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
                 background: 'white',
                 padding: '15px 20px',
                 borderRadius: '10px',
-                border: 'none',
+                border: 'none'
               }}
             >
               Create New Room
@@ -171,7 +214,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
                 background: 'none',
                 color: 'white',
                 padding: '15px 20px',
-                borderRadius: '10px',
+                borderRadius: '10px'
               }}
             >
               <Group>
@@ -189,12 +232,12 @@ const RoomsScreen = ({ onJoinRoom }) => {
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
                   zIndex: 1000,
-                  position: 'absolute',
+                  position: 'absolute'
                 },
                 item: {
                   '&:hover': {
-                    backgroundColor: theme.colors.gray[1],
-                  },
+                    backgroundColor: theme.colors.gray[1]
+                  }
                 }
               })}
               offset={5}
@@ -212,60 +255,60 @@ const RoomsScreen = ({ onJoinRoom }) => {
                     color: 'white',
                     padding: '15px 20px',
                     borderRadius: '10px',
-                    position: 'relative', 
+                    position: 'relative'
                   }}
                 >
                   Select Port
                 </Button>
               </Menu.Target>
 
-              <Menu.Dropdown style={{
-                padding: '10px', borderRadius: '10px', borderColor: 'rgba(255, 255, 255, 0.2)',
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: 'white',
-              }}>
-                <Menu.Label style={{ color: 'white', fontWeight: 500, width: '100%', padding: '10px' }}>
+              <Menu.Dropdown
+                style={{
+                  padding: '10px',
+                  borderRadius: '10px',
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: 'white'
+                }}
+              >
+                <Menu.Label
+                  style={{ color: 'white', fontWeight: 500, width: '100%', padding: '10px' }}
+                >
                   Available Ports
                 </Menu.Label>
-                <Menu.Item
-                  style={{
-                    color: 'white',
-                    width: '100%',
-                    borderRadius: '5px',
-                    background: '#228BE6',
-                    border: 'none',
-                 
-                    '&:hover': {
-                      backgroundColor: '#1c7ed6',
-                    }
-                  }}
-                  onClick={() => {
-                    console.log('COM4');
-                  }}
-                >
-                  COM4
-                </Menu.Item>
-
-                <Menu.Item
-                  style={{
-                    color: 'white',
-                    width: '100%',
-                    borderRadius: '5px',
-                    background: '#228BE6',
-                    border: 'none',
-                 
-                    '&:hover': {
-                      backgroundColor: '#1c7ed6',
-                    }
-                  }}
-                  onClick={() => {
-                    console.log('COM5');
-                  }}
-                >
-                  COM5
-                </Menu.Item>
-    
-
+                {Array.isArray(listPorts) ? (
+                  listPorts.map((element, index) => (
+                    <Menu.Item
+                      key={index}
+                      style={{
+                        color: 'white',
+                        width: '100%',
+                        borderRadius: '5px',
+                        background: '#228BE6',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => {
+                        console.log(element)
+                      }}
+                    >
+                      {element}
+                    </Menu.Item>
+                  ))
+                ) : (
+                  <Menu.Item
+                    style={{
+                      color: 'white',
+                      width: '100%',
+                      borderRadius: '5px',
+                      background: '#228BE6',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {listPorts}
+                  </Menu.Item>
+                )}
                 <Menu.Divider />
                 <Menu.Item
                   leftSection={<FiSearch size={14} />}
@@ -280,29 +323,38 @@ const RoomsScreen = ({ onJoinRoom }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     '&:hover': {
-                      backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.05)'
                     }
                   }}
                 >
-                  <Button style={{ backgroundColor: 'transparent', border: 'none', color: 'white' }}>Scan Now</Button>
+                  <Button
+                    style={{ backgroundColor: 'transparent', border: 'none', color: 'white' }}
+                    onClick={handleScanPorts}
+                  >
+                    Scan Now
+                  </Button>
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
           </Group>
 
-          <div style={{
-            display: 'flex',
-            gap: '2rem',
-            width: '100%',
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '2rem',
+              width: '100%'
+            }}
+          >
             <div style={{ flex: 2 }}>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-                gap: '2rem',
-                width: '100%',
-                justifyItems: 'center'
-              }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+                  gap: '2rem',
+                  width: '100%',
+                  justifyItems: 'center'
+                }}
+              >
                 {isLoading ? (
                   [...Array(3)].map((_, index) => (
                     <Paper
@@ -319,7 +371,11 @@ const RoomsScreen = ({ onJoinRoom }) => {
                   ))
                 ) : rooms.length > 0 ? (
                   rooms.map((room) => (
-                    <RoomCard key={room.room_id} room={room} onClick={() => onJoinRoom(room.room_id)} />
+                    <RoomCard
+                      key={room.room_id}
+                      room={room}
+                      onClick={() => onJoinRoom(room.room_id)}
+                    />
                   ))
                 ) : (
                   <Paper
@@ -343,7 +399,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
         </motion.div>
       </Container>
     </div>
-  );
-};
+  )
+}
 
-export default RoomsScreen;
+export default RoomsScreen
