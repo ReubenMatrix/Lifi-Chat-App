@@ -1,22 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { TextInput, Button, Stack, Paper, Group, Title, Container, Box, Text } from '@mantine/core'
+import { 
+  TextInput, 
+  Button, 
+  Stack, 
+  Paper, 
+  Group, 
+  Title, 
+  Container, 
+  Box, 
+  Text, 
+  Badge, 
+  Menu, 
+  ActionIcon 
+} from '@mantine/core'
 import { motion } from 'framer-motion'
-import { FiArrowLeft, FiSend } from 'react-icons/fi'
+import { FiArrowLeft, FiSend, FiBell } from 'react-icons/fi'
 
 const ChatScreen = ({ roomId, username, onBack }) => {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
+  const [notifications, setNotifications] = useState([])
   const messagesEndRef = useRef(null)
   const pollingRef = useRef(null)
+  const notificationPollingRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   const loadMessages = async () => {
-    const messagesList = await window.api.getMessages(roomId)
-    setMessages(messagesList)
-    scrollToBottom()
+    try {
+      const messagesList = await window.api.getMessages(roomId)
+      setMessages(messagesList)
+      scrollToBottom()
+    } catch (error) {
+      console.error('Error loading messages:', error)
+    }
   }
 
   useEffect(() => {
@@ -30,15 +49,61 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     }
   }, [roomId])
 
+  const loadNotifications = async () => {
+    try {
+      const notifs = await window.api.getNotifications(username)
+      setNotifications(notifs)
+    } catch (error) {
+      console.error('Error loading notifications:', error)
+    }
+  }
+
+  useEffect(() => {
+    loadNotifications()
+    notificationPollingRef.current = setInterval(loadNotifications, 5000)
+
+    return () => {
+      if (notificationPollingRef.current) {
+        clearInterval(notificationPollingRef.current)
+      }
+    }
+  }, [username])
+
+  const handleMarkRead = async (notificationId) => {
+    try {
+      await window.api.markNotificationRead(notificationId)
+      await loadNotifications()
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    try {
+      await Promise.all(
+        notifications.map(notif => 
+          window.api.markNotificationRead(notif.id)
+        )
+      )
+      await loadNotifications()
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+    }
+  }
+
   const sendMessage = async () => {
     if (newMessage.trim()) {
-      await window.api.sendMessage({
-        roomId,
-        username,
-        message: newMessage.trim()
-      })
-      setNewMessage('')
-      await loadMessages()
+      try {
+        await window.api.sendMessage({
+          roomId,
+          username,
+          message: newMessage.trim()
+        })
+        setNewMessage('')
+        await loadMessages()
+      } catch (error) {
+        console.error('Error sending message:', error)
+      }
     }
   }
 
@@ -48,6 +113,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
         minHeight: '100vh',
         padding: '2rem',
         position: 'relative',
+        background: 'linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%)'
       }}
     >
       <Container 
@@ -68,10 +134,10 @@ const ChatScreen = ({ roomId, username, onBack }) => {
             border: '1px solid rgba(255, 255, 255, 0.2)',
             borderRadius: '15px',
             overflow: 'hidden',
-            position: 'relative'
+            position: 'relative',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
           }}
         >
-          {/* Header */}
           <Paper
             p="md"
             style={{
@@ -94,8 +160,10 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                     root: {
                       color: 'black',
                       borderRadius: '15px',
+                      transition: 'all 0.2s ease',
                       '&:hover': {
-                        background: 'rgba(255, 255, 255, 0.1)'
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        transform: 'translateX(-2px)'
                       }
                     }
                   }}
@@ -106,16 +174,157 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                   {roomId.replace('Room-', 'Room ')}
                 </Title>
               </Group>
+
+              {/* Notifications Menu */}
+              <Menu 
+                position="bottom-end" 
+                shadow="md"
+                width={300}
+                styles={{
+                  dropdown: {
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px'
+                  },
+                  item: {
+                    backgroundColor: 'transparent',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  }
+                }}
+              >
+                <Menu.Target>
+                  <ActionIcon 
+                    variant="transparent" 
+                    style={{ 
+                      position: 'relative',
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        background: 'rgba(255, 255, 255, 0.1)'
+                      }
+                    }}
+                  >
+                    <FiBell 
+                      size={20} 
+                      color="black"
+                      style={{
+                        animation: notifications.length > 0 ? 'pulse 2s infinite' : 'none'
+                      }}
+                    />
+                    {notifications.length > 0 && (
+                      <Badge 
+                        size="xs" 
+                        variant="filled" 
+                        color="red"
+                        style={{
+                          position: 'absolute',
+                          top: -5,
+                          right: -5,
+                          borderRadius: '50%',
+                          padding: '8px',
+                          minWidth: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          border: '2px solid rgba(255, 255, 255, 0.9)',
+                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                          animation: 'bounce 0.5s ease'
+                        }}
+                      >
+                      <span>
+                        {notifications.length}
+                      </span>
+                      </Badge>
+                    )}
+                  </ActionIcon>
+                </Menu.Target>
+
+                <Menu.Dropdown style={{padding: '10px'}}>
+                  <Box p="xs">
+                    <Group position="apart" mb="xs">
+                      <Text weight={500} color="white">Notifications</Text>
+
+                    </Group>
+                  </Box>
+                  
+                  {notifications.length === 0 ? (
+                    <Menu.Item>
+                      <Box 
+                        py="md" 
+                        style={{ 
+                          textAlign: 'left',
+                          color: 'rgba(255, 255, 255, 0.5)'
+                        }}
+                      >
+                        <Text size="sm">No new notifications</Text>
+                      </Box>
+                    </Menu.Item>
+                  ) : (
+                    notifications.map((notif) => (
+                      <Menu.Item
+                        key={notif.id}
+                        onClick={() => handleMarkRead(notif.id)}
+                        style={{
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                          padding: '12px'
+                        }}
+                      >
+                        <Box>
+                          <Group position="apart">
+                            <Text size="sm" color="white" weight={500}>
+                              {notif.type === 'JOIN_REQUEST' ? 'Join Request' : 'Notification'}
+                            </Text>
+                            <Text size="xs" color="dimmed">
+                              {new Date(notif.timestamp).toLocaleTimeString()}
+                            </Text>
+                          </Group>
+                          <Text 
+                            size="sm" 
+                            color="rgba(255, 255, 255, 0.7)"
+                            mt={4}
+                          >
+                            {notif.type === 'JOIN_REQUEST' 
+                              ? `${notif.from} requested to join ${notif.roomId.replace('Room-', 'Room ')}`
+                              : notif.message}
+                          </Text>
+                        </Box>
+                      </Menu.Item>
+                    ))
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             </Group>
           </Paper>
-
 
           <Box
             style={{
               flex: 1,
               overflowY: 'auto',
               padding: '1rem',
-              paddingBottom: '80px', 
+              paddingBottom: '80px',
+              '&::-webkit-scrollbar': {
+                width: '8px'
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px'
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(255, 255, 255, 0.3)',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.4)'
+                }
+              }
             }}
             className="messages-container"
           >
@@ -157,7 +366,9 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                       }}
                     >
-                      <Text style={{ padding: '5px', wordBreak: 'break-word' }}>{msg.message}</Text>
+                      <Text style={{ padding: '5px', wordBreak: 'break-word' }}>
+                        {msg.message}
+                      </Text>
                     </Paper>
                     <Text 
                       size="xs" 
@@ -176,7 +387,6 @@ const ChatScreen = ({ roomId, username, onBack }) => {
               <div ref={messagesEndRef} />
             </Stack>
           </Box>
-
 
           <Paper
             style={{
@@ -204,6 +414,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                 style={{ flex: 1 }}
                 styles={{
                   input: {
+                    padding: '10px',
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     color: 'white',
@@ -228,20 +439,60 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                   color: 'black',
                   borderRadius: '15px',
                   height: '35px',
-                  minWidth: '100px'
+                  minWidth: '100px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
+                  }
                 }}
               >
-                Send
+                <Group spacing={2}>
+                  <FiSend size={26} />
+                </Group>
               </Button>
             </Group>
           </Paper>
         </Paper>
       </Container>
+
+      <style>
+        {`
+          @keyframes pulse {
+            0% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.1);
+            }
+            100% {
+              transform: scale(1);
+            }
+          }
+
+          @keyframes bounce {
+            0% {
+              transform: scale(0);
+            }
+            50% {
+              transform: scale(1.2);
+            }
+            100% {
+              transform: scale(1);
+            }
+          }
+
+          .notification-item {
+            transition: all 0.2s ease;
+          }
+
+          .notification-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+          }
+        `}
+      </style>
     </div>
   )
 }
-
-
-
 
 export default ChatScreen

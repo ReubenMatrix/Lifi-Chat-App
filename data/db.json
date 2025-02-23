@@ -1,28 +1,49 @@
 {
   "rooms": [
     {
-      "room_id": "Room-1739857968879",
-      "created_at": 1739857968882
-    },
-    {
-      "room_id": "Room-1739857969838",
-      "created_at": 1739857969839
-    },
-    {
-      "room_id": "Room-1739857970677",
-      "created_at": 1739857970678
-    },
-    {
-      "room_id": "Room-1739859659795",
-      "created_at": 1739859659832
+      "room_id": "Room-1740305747446",
+      "created_at": 1740305747447,
+      "created_by": "reuben",
+      "users": [
+        "reuben",
+        "lenox",
+        "brendon"
+      ]
     }
   ],
   "messages": [
     {
-      "room_id": "Room-1739857968879",
-      "timestamp": 1739858328845,
+      "room_id": "Room-1740305747446",
+      "timestamp": 1740306596990,
       "username": "reuben",
-      "message": "GWGSW"
+      "message": "hey"
+    },
+    {
+      "room_id": "Room-1740305747446",
+      "timestamp": 1740306602643,
+      "username": "brendon",
+      "message": "nice"
+    }
+  ],
+  "users": {},
+  "notifications": [
+    {
+      "id": "notif-1740305849304",
+      "from": "lenox",
+      "to": "reuben",
+      "type": "JOIN_REQUEST",
+      "roomId": "Room-1740305747446",
+      "timestamp": 1740305849304,
+      "read": true
+    },
+    {
+      "id": "notif-1740306346569",
+      "from": "brendon",
+      "to": "reuben",
+      "type": "JOIN_REQUEST",
+      "roomId": "Room-1740305747446",
+      "timestamp": 1740306346569,
+      "read": true
     }
   ]
 }

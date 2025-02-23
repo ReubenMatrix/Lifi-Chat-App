@@ -15,7 +15,9 @@ if (!fs.existsSync(path.join(projectRoot, 'data'))) {
 // Initialize database with default data
 const defaultData = {
   rooms: [],
-  messages: []
+  messages: [],
+  users: {},  // Add users object to track user data
+  notifications: []  // Add notifications array
 }
 
 class Database {
@@ -63,13 +65,15 @@ async function initializeDatabase() {
   }
 }
 
-ipcMain.handle('create-room', async (_, roomName) => {
+ipcMain.handle('create-room', async (_, roomName, username) => {
   try {
     await db.read()
 
     const newRoom = {
       room_id: roomName,
-      created_at: Date.now()
+      created_at: Date.now(),
+      created_by: username,
+      users: [username]
     }
 
     db.data.rooms.push(newRoom)
@@ -78,6 +82,35 @@ ipcMain.handle('create-room', async (_, roomName) => {
     return { success: true }
   } catch (error) {
     console.error('Error creating room:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('join-room', async (_, roomId, username) => {
+  try {
+    await db.read()
+    
+    const room = db.data.rooms.find(r => r.room_id === roomId)
+    if (!room) {
+      throw new Error('Room not found')
+    }
+
+    if (!room.users.includes(username)) {
+      room.users.push(username)
+      await db.write()
+    }
+
+
+
+    return { 
+      success: true, 
+      notification: {
+        creatorUsername: room.created_by,
+        joiningUsername: username
+      }
+    }
+  } catch (error) {
+    console.error('Error joining room:', error)
     return { success: false, error: error.message }
   }
 })
@@ -222,5 +255,54 @@ ipcMain.handle('scan-ports', async () => {
     return 'NO PORTS Detected'
   } catch (error) {
     return error.message
+  }
+})
+
+ipcMain.handle('add-notification', async (_, { from, to, type, roomId }) => {
+  try {
+    await db.read()
+    
+    const notification = {
+      id: `notif-${Date.now()}`,
+      from,
+      to,
+      type,
+      roomId,
+      timestamp: Date.now(),
+      read: false
+    }
+    
+    db.data.notifications.push(notification)
+    await db.write()
+    
+    return { success: true, notification }
+  } catch (error) {
+    console.error('Error adding notification:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-notifications', async (_, username) => {
+  try {
+    await db.read()
+    return db.data.notifications.filter(n => n.to === username && !n.read)
+  } catch (error) {
+    console.error('Error getting notifications:', error)
+    return []
+  }
+})
+
+ipcMain.handle('mark-notification-read', async (_, notificationId) => {
+  try {
+    await db.read()
+    const notification = db.data.notifications.find(n => n.id === notificationId)
+    if (notification) {
+      notification.read = true
+      await db.write()
+    }
+    return { success: true }
+  } catch (error) {
+    console.error('Error marking notification as read:', error)
+    return { success: false, error: error.message }
   }
 })

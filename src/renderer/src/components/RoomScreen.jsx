@@ -1,84 +1,116 @@
 import React, { useState, useEffect } from 'react'
+import { notifications } from '@mantine/notifications'
 import {
   Button,
   Stack,
   Title,
   Paper,
   Container,
-  Grid,
   Text,
   Group,
-  TextInput,
   Menu
 } from '@mantine/core'
 import { motion } from 'framer-motion'
 import {
-  FiPlus,
   FiUsers,
   FiMessageSquare,
-  FiHash,
-  FiRefreshCw,
-  FiTrash,
-  FiSearch
+  FiSearch,
+  FiCheckCircle
 } from 'react-icons/fi'
 import { scanForArduinoPorts } from './../helper/postScanning'
 
-const RoomCard = ({ room, onClick }) => (
-  <motion.div
-    whileHover={{ scale: 1.03 }}
-    whileTap={{ scale: 0.98 }}
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-  >
-    <Paper
-      className="glass-card"
-      p="xl"
-      onClick={onClick}
-      style={{
-        cursor: 'pointer',
-        height: '200px',
-        width: '500px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)'
-      }}
+const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
+  const handleJoinRoom = async () => {
+    try {
+      const result = await window.api.joinRoom(room.room_id, username);
+      
+      if (result.success && result.notification) {
+        // Only create notification if the joining user is not the creator
+        if (result.notification.creatorUsername !== username) {
+          await window.api.addNotification({
+            from: username,
+            to: result.notification.creatorUsername,
+            type: 'JOIN_REQUEST',
+            roomId: room.room_id
+          });
+          
+          notifications.show({
+            title: 'Join Request Sent',
+            message: `Request sent to ${result.notification.creatorUsername}`,
+            color: 'blue'
+          });
+        }
+      }
+      
+      // Call onClick after successful join
+      onClick(room.room_id);
+    } catch (error) {
+      console.error('Error joining room:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to join room',
+        color: 'red'
+      });
+    }
+  };
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.98 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
     >
-      <div
+      <Paper
+        className="glass-card"
+        p="xl"
+        onClick={handleJoinRoom}
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.1,
-          background: 'linear-gradient(45deg, #FF6B6B 0%, #FFE66D 100%)',
-          zIndex: 0
+          cursor: 'pointer',
+          height: '200px',
+          width: '500px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
         }}
-      />
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            opacity: 0.1,
+            background: 'linear-gradient(45deg, #FF6B6B 0%, #FFE66D 100%)',
+            zIndex: 0
+          }}
+        />
 
-      <Stack spacing="md" align="center" style={{ zIndex: 1 }}>
-        <FiMessageSquare size={40} color="#fff" />
-        <Title order={3} style={{ color: '#fff', textAlign: 'center' }}>
-          {room.room_id.replace('Room-', 'Room ')}
-        </Title>
-        <Group spacing="xs" align="center">
-          <FiUsers size={16} color="#fff" />
-          <Text color="white" size="sm">
-            Click to Join
-          </Text>
-        </Group>
-      </Stack>
-    </Paper>
-  </motion.div>
-)
+        <Stack spacing="md" align="center" style={{ zIndex: 1 }}>
+          <FiMessageSquare size={40} color="#fff" />
+          <Title order={3} style={{ color: '#fff', textAlign: 'center' }}>
+            {room.room_id.replace('Room-', 'Room ')}
+          </Title>
+          <Group spacing="xs" align="center">
+            <FiUsers size={16} color="#fff" />
+            <Text color="white" size="sm">
+              Click to Join
+            </Text>
+          </Group>
+        </Stack>
+      </Paper>
+    </motion.div>
+  )
+}
 
-const RoomsScreen = ({ onJoinRoom }) => {
+const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
   const [rooms, setRooms] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [listPorts, setListPorts] = useState([])
@@ -91,6 +123,15 @@ const RoomsScreen = ({ onJoinRoom }) => {
     }
     initializePorts()
   }, [])
+
+  useEffect(() => {
+    if (roomId && username) {
+      window.api.joinRoom(roomId, username)
+        .catch(error => console.error('Error joining room:', error))
+
+      window.api.getMessages(roomId)
+    }
+  }, [roomId, username])
 
   const loadRooms = async () => {
     setIsLoading(true)
@@ -110,9 +151,14 @@ const RoomsScreen = ({ onJoinRoom }) => {
 
   const createRoom = async () => {
     const roomName = `Room-${Date.now()}`
-    await window.api.createRoom(roomName)
-    await loadRooms()
+    try {
+      await window.api.createRoom(roomName, username)
+      await loadRooms()
+    } catch (error) {
+      console.error('Error creating room:', error)
+    }
   }
+
 
   const handleScanPorts = async () => {
     const ports = await scanForArduinoPorts()
@@ -374,7 +420,18 @@ const RoomsScreen = ({ onJoinRoom }) => {
                     <RoomCard
                       key={room.room_id}
                       room={room}
-                      onClick={() => onJoinRoom(room.room_id)}
+                      onClick={(roomId) => {
+                        console.log('Switching to room:', roomId);
+                        onRoomSelect(roomId);
+                      }}
+                      onJoinRoom={async (roomId) => {
+                        try {
+                          await window.api.joinRoom(roomId, username);
+                        } catch (error) {
+                          console.error('Error joining room:', error);
+                        }
+                      }}
+                      username={username}
                     />
                   ))
                 ) : (

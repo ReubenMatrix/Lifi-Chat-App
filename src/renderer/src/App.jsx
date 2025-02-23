@@ -14,20 +14,25 @@ const App = () => {
     setCurrentScreen('rooms')
   }
 
-  const handleJoinRoom = (roomId) => {
+  const handleRoomSelect = (roomId) => {
     setCurrentRoom(roomId)
     setCurrentScreen('chat')
   }
 
+  const handleBack = () => {
+    setCurrentRoom(null);
+    setCurrentScreen('rooms');
+  };
+
   return (
     <MantineProvider withGlobalStyles withNormalizeCSS>
       {currentScreen === 'welcome' && <WelcomeScreen onStart={handleStart} />}
-      {currentScreen === 'rooms' && <RoomsScreen onJoinRoom={handleJoinRoom} />}
+      {currentScreen === 'rooms' && <RoomsScreen onRoomSelect={handleRoomSelect} username={username} />}
       {currentScreen === 'chat' && (
         <ChatScreen
           roomId={currentRoom}
           username={username}
-          onBack={() => setCurrentScreen('rooms')}
+          onBack={handleBack}
         />
       )}
     </MantineProvider>
