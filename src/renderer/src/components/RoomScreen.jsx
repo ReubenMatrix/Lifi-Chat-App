@@ -1,23 +1,10 @@
-import React, { useState, useEffect } from 'react'
-import { notifications } from '@mantine/notifications'
-import {
-  Button,
-  Stack,
-  Title,
-  Paper,
-  Container,
-  Text,
-  Group,
-  Menu
-} from '@mantine/core'
-import { motion } from 'framer-motion'
-import {
-  FiUsers,
-  FiMessageSquare,
-  FiSearch,
-  FiCheckCircle
-} from 'react-icons/fi'
-import { scanForArduinoPorts } from './../helper/postScanning'
+import React, { useState, useEffect } from 'react';
+import { notifications } from '@mantine/notifications';
+import { Button, Stack, Title, Paper, Container, Text, Group, Menu } from '@mantine/core';
+import { motion } from 'framer-motion';
+import { FiUsers, FiMessageSquare, FiSearch } from 'react-icons/fi';
+import { scanForArduinoPorts } from './../helper/postScanning';
+import './RoomScreen.css';
 
 const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
   const handleJoinRoom = async () => {
@@ -25,7 +12,6 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
       const result = await window.api.joinRoom(room.room_id, username);
       
       if (result.success && result.notification) {
-        // Only create notification if the joining user is not the creator
         if (result.notification.creatorUsername !== username) {
           await window.api.addNotification({
             from: username,
@@ -42,7 +28,6 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
         }
       }
       
-      // Call onClick after successful join
       onClick(room.room_id);
     } catch (error) {
       console.error('Error joining room:', error);
@@ -61,38 +46,8 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <Paper
-        className="glass-card"
-        p="xl"
-        onClick={handleJoinRoom}
-        style={{
-          cursor: 'pointer',
-          height: '200px',
-          width: '500px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            opacity: 0.1,
-            background: 'linear-gradient(45deg, #FF6B6B 0%, #FFE66D 100%)',
-            zIndex: 0
-          }}
-        />
-
+      <Paper className="glass-card" p="xl" onClick={handleJoinRoom}>
+        <div className="card-gradient" />
         <Stack spacing="md" align="center" style={{ zIndex: 1 }}>
           <FiMessageSquare size={40} color="#fff" />
           <Title order={3} style={{ color: '#fff', textAlign: 'center' }}>
@@ -107,162 +62,84 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
         </Stack>
       </Paper>
     </motion.div>
-  )
-}
+  );
+};
 
 const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
-  const [rooms, setRooms] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [listPorts, setListPorts] = useState([])
-  const [port, setPort] = useState('')
+  const [rooms, setRooms] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [listPorts, setListPorts] = useState([]);
+  const [port, setPort] = useState('');
 
   useEffect(() => {
     const initializePorts = async () => {
-      const ports = await scanForArduinoPorts()
-      setListPorts(ports)
-    }
-    initializePorts()
-  }, [])
+      const ports = await scanForArduinoPorts();
+      setListPorts(ports);
+    };
+    initializePorts();
+  }, []);
 
   useEffect(() => {
     if (roomId && username) {
       window.api.joinRoom(roomId, username)
-        .catch(error => console.error('Error joining room:', error))
+        .catch(error => console.error('Error joining room:', error));
 
-      window.api.getMessages(roomId)
+      window.api.getMessages(roomId);
     }
-  }, [roomId, username])
+  }, [roomId, username]);
 
   const loadRooms = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const roomsList = await window.api.getRooms()
-      setRooms(roomsList)
+      const roomsList = await window.api.getRooms();
+      setRooms(roomsList);
     } catch (error) {
-      console.error('Error loading rooms:', error)
+      console.error('Error loading rooms:', error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    loadRooms()
-  }, [])
+    loadRooms();
+  }, []);
 
   const createRoom = async () => {
-    const roomName = `Room-${Date.now()}`
+    const roomName = `Room-${Date.now()}`;
     try {
-      await window.api.createRoom(roomName, username)
-      await loadRooms()
+      await window.api.createRoom(roomName, username);
+      await loadRooms();
     } catch (error) {
-      console.error('Error creating room:', error)
+      console.error('Error creating room:', error);
     }
-  }
-
+  };
 
   const handleScanPorts = async () => {
-    const ports = await scanForArduinoPorts()
-    setListPorts(ports)
-  }
+    const ports = await scanForArduinoPorts();
+    setListPorts(ports);
+  };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100vw',
-        padding: '2rem',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        overflow: 'auto',
-        maxHeight: '100vh'
-      }}
-    >
-      <Container
-        styles={{
-          width: '100%',
-          maxWidth: '1400px',
-          height: '100%',
-          overflow: 'auto',
-          root: {
-            '&::-webkit-scrollbar': {
-              width: '8px'
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px'
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'rgba(255, 255, 255, 0.3)',
-              borderRadius: '4px',
-              '&:hover': {
-                background: 'rgba(255, 255, 255, 0.4)'
-              }
-            }
-          }
-        }}
-      >
+    <div className="rooms-container">
+      <Container className="main-container">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          style={{
-            height: '100%',
-            overflow: 'auto'
-          }}
+          style={{ height: '100%', overflow: 'auto' }}
         >
-          <Paper
-            p="sm"
-            style={{
-              marginBottom: '2rem',
-              background: 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              width: '100%',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          >
-            <Title order={1} style={{ color: '#fff' }}>
+          <Paper className="header-paper" p="sm">
+            <Title order={1} style={{ color: '#fff', textAlign: 'center' }}>
               Available Rooms
             </Title>
           </Paper>
 
-          <Group
-            position="center"
-            style={{
-              width: '100%',
-              marginBottom: '2rem',
-              display: 'flex',
-              justifyContent: 'space-evenly'
-            }}
-          >
-            <Button
-              onClick={createRoom}
-              size="lg"
-              style={{
-                background: 'white',
-                padding: '15px 20px',
-                borderRadius: '10px',
-                border: 'none'
-              }}
-            >
+          <Group className="buttons-group">
+            <Button onClick={createRoom} size="lg" className="create-button">
               Create New Room
             </Button>
 
-            <Button
-              size="lg"
-              variant="outline"
-              color="white"
-              style={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                background: 'none',
-                color: 'white',
-                padding: '15px 20px',
-                borderRadius: '10px'
-              }}
-            >
+            <Button size="lg" variant="outline" color="white" className="refresh-button">
               <Group>
                 <span>Refresh Rooms</span>
               </Group>
@@ -291,67 +168,27 @@ const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
               trigger="hover"
             >
               <Menu.Target>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  color="white"
-                  style={{
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: 'white',
-                    padding: '15px 20px',
-                    borderRadius: '10px',
-                    position: 'relative'
-                  }}
-                >
+                <Button size="lg" variant="outline" color="white" className="port-button">
                   Select Port
                 </Button>
               </Menu.Target>
 
-              <Menu.Dropdown
-                style={{
-                  padding: '10px',
-                  borderRadius: '10px',
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: 'white'
-                }}
-              >
-                <Menu.Label
-                  style={{ color: 'white', fontWeight: 500, width: '100%', padding: '10px' }}
-                >
+              <Menu.Dropdown className="menu-dropdown">
+                <Menu.Label style={{ color: 'black', fontWeight: 500, width: '100%', padding: '10px' }}>
                   Available Ports
                 </Menu.Label>
                 {Array.isArray(listPorts) ? (
                   listPorts.map((element, index) => (
                     <Menu.Item
                       key={index}
-                      style={{
-                        color: 'white',
-                        width: '100%',
-                        borderRadius: '5px',
-                        background: '#228BE6',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => {
-                        console.log(element)
-                      }}
+                      className="menu-item"
+                      onClick={() => console.log(element)}
                     >
                       {element}
                     </Menu.Item>
                   ))
                 ) : (
-                  <Menu.Item
-                    style={{
-                      color: 'white',
-                      width: '100%',
-                      borderRadius: '5px',
-                      background: '#228BE6',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
+                  <Menu.Item className="menu-item">
                     {listPorts}
                   </Menu.Item>
                 )}
@@ -362,19 +199,15 @@ const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
                     borderRadius: '5px',
                     marginTop: '5px',
                     color: 'white',
-                    border: 'black',
                     width: '100%',
                     display: 'flex',
                     background: '#228BE6',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    '&:hover': {
-                      backgroundColor: 'rgba(0, 0, 0, 0.05)'
-                    }
                   }}
                 >
                   <Button
-                    style={{ backgroundColor: 'transparent', border: 'none', color: 'white' }}
+                    className="scan-button"
                     onClick={handleScanPorts}
                   >
                     Scan Now
@@ -384,79 +217,39 @@ const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
             </Menu>
           </Group>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: '2rem',
-              width: '100%'
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-                  gap: '2rem',
-                  width: '100%',
-                  justifyItems: 'center'
-                }}
-              >
-                {isLoading ? (
-                  [...Array(3)].map((_, index) => (
-                    <Paper
-                      key={index}
-                      p="xl"
-                      style={{
-                        height: '200px',
-                        width: '500px',
-                        opacity: 0.5,
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        animation: 'pulse 1.5s infinite'
-                      }}
-                    />
-                  ))
-                ) : rooms.length > 0 ? (
-                  rooms.map((room) => (
-                    <RoomCard
-                      key={room.room_id}
-                      room={room}
-                      onClick={(roomId) => {
-                        console.log('Switching to room:', roomId);
-                        onRoomSelect(roomId);
-                      }}
-                      onJoinRoom={async (roomId) => {
-                        try {
-                          await window.api.joinRoom(roomId, username);
-                        } catch (error) {
-                          console.error('Error joining room:', error);
-                        }
-                      }}
-                      username={username}
-                    />
-                  ))
-                ) : (
-                  <Paper
-                    p="xl"
-                    style={{
-                      textAlign: 'center',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      backdropFilter: 'blur(10px)',
-                      gridColumn: '1 / -1',
-                      width: '100%'
-                    }}
-                  >
-                    <Text color="white" size="lg">
-                      No rooms available. Create one to get started!
-                    </Text>
-                  </Paper>
-                )}
-              </div>
-            </div>
+          <div className="rooms-grid">
+            {isLoading ? (
+              [...Array(3)].map((_, index) => (
+                <Paper key={index} p="xl" className="loading-card" />
+              ))
+            ) : rooms.length > 0 ? (
+              rooms.map((room) => (
+                <RoomCard
+                  key={room.room_id}
+                  room={room}
+                  onClick={onRoomSelect}
+                  onJoinRoom={async (roomId) => {
+                    try {
+                      await window.api.joinRoom(roomId, username);
+                    } catch (error) {
+                      console.error('Error joining room:', error);
+                    }
+                  }}
+                  username={username}
+                />
+              ))
+            ) : (
+              <Paper p="xl" className="empty-rooms-message">
+                <Text color="white" size="lg">
+                  No rooms available. Create one to get started!
+                </Text>
+              </Paper>
+            )}
           </div>
         </motion.div>
       </Container>
     </div>
-  )
-}
+  );
+};
 
-export default RoomsScreen
+export default RoomsScreen;
