@@ -6,18 +6,66 @@ import { FiUsers, FiMessageSquare, FiSearch } from 'react-icons/fi';
 import { scanForArduinoPorts } from './../helper/postScanning';
 import './RoomScreen.css';
 
-const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
+const RoomCard = ({ room, onClick, username }) => {
+  const [joinStatus, setJoinStatus] = useState('none'); 
+
+
+  useEffect(() => {
+    const checkJoinStatus = async () => {
+      try {
+        const notifications = await window.api.getNotifications(username);
+        const joinNotification = notifications.find(
+          n => n.roomId === room.room_id && 
+          (n.type === 'JOIN_REQUEST' || n.type === 'JOIN_APPROVED' || n.type === 'JOIN_REJECTED')
+        );
+        
+        if (joinNotification) {
+          setJoinStatus(joinNotification.type.split('_')[1].toLowerCase());
+        }
+      } catch (error) {
+        console.error('Error checking join status:', error);
+      }
+    };
+    
+    checkJoinStatus();
+  }, [room.room_id, username]);
+
+
   const handleJoinRoom = async () => {
     try {
+      if (room.created_by === username) {
+        onClick(room.room_id);
+        return;
+      }
+
+      if (room.users.includes(username)) {
+        onClick(room.room_id);
+        return;
+      }
+
+
+      if (joinStatus === 'pending') {
+        notifications.show({
+          title: 'Pending Request',
+          message: 'Your join request is still pending approval',
+          color: 'yellow'
+        });
+        return;
+      }
+
+
+
       const result = await window.api.joinRoom(room.room_id, username);
       
+
       if (result.success && result.notification) {
         if (result.notification.creatorUsername !== username) {
           await window.api.addNotification({
             from: username,
             to: result.notification.creatorUsername,
             type: 'JOIN_REQUEST',
-            roomId: room.room_id
+            roomId: room.room_id,
+            status: 'PENDING'
           });
           
           notifications.show({
@@ -28,7 +76,6 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
         }
       }
       
-      onClick(room.room_id);
     } catch (error) {
       console.error('Error joining room:', error);
       notifications.show({
@@ -36,6 +83,20 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
         message: 'Failed to join room',
         color: 'red'
       });
+    }
+  };
+
+
+  const StatusBadge = () => {
+    switch (joinStatus) {
+      case 'pending':
+        return <Badge color="yellow">Pending Approval</Badge>;
+      case 'approved':
+        return <Badge color="green">Approved</Badge>;
+      case 'rejected':
+        return <Badge color="red">Rejected</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -64,6 +125,13 @@ const RoomCard = ({ room, onClick, onJoinRoom, username }) => {
     </motion.div>
   );
 };
+
+
+
+
+
+
+
 
 const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
   const [rooms, setRooms] = useState([]);

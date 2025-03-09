@@ -12,12 +12,13 @@ if (!fs.existsSync(path.join(projectRoot, 'data'))) {
   fs.mkdirSync(path.join(projectRoot, 'data'))
 }
 
-// Initialize database with default data
+
 const defaultData = {
   rooms: [],
   messages: [],
-  users: {},  // Add users object to track user data
-  notifications: []  // Add notifications array
+  users: {},  
+  notifications: [],
+  pendingRequests: []
 }
 
 class Database {
@@ -73,7 +74,8 @@ ipcMain.handle('create-room', async (_, roomName, username) => {
       room_id: roomName,
       created_at: Date.now(),
       created_by: username,
-      users: [username]
+      users: [username],
+      pendingRequests: []
     }
 
     db.data.rooms.push(newRoom)
@@ -86,6 +88,8 @@ ipcMain.handle('create-room', async (_, roomName, username) => {
   }
 })
 
+
+
 ipcMain.handle('join-room', async (_, roomId, username) => {
   try {
     await db.read()
@@ -95,15 +99,39 @@ ipcMain.handle('join-room', async (_, roomId, username) => {
       throw new Error('Room not found')
     }
 
-    if (!room.users.includes(username)) {
-      room.users.push(username)
-      await db.write()
+
+    if (room.created_by === username) {
+      if (!room.users.includes(username)) {
+        room.users.push(username)
+        await db.write()
+      }
+      return { success: true, immediate: true }
     }
 
 
+    if (room.users.includes(username)) {
+      return { success: true, immediate: true }
+    }
 
+
+    if (room.pendingRequests && room.pendingRequests.includes(username)) {
+      return { 
+        success: false, 
+        error: 'Join request already pending'
+      }
+    }
+
+
+    if (!room.pendingRequests) {
+      room.pendingRequests = []
+    }
+    room.pendingRequests.push(username)
+    await db.write()
+
+  
     return { 
       success: true, 
+      immediate: false,
       notification: {
         creatorUsername: room.created_by,
         joiningUsername: username
@@ -114,6 +142,9 @@ ipcMain.handle('join-room', async (_, roomId, username) => {
     return { success: false, error: error.message }
   }
 })
+
+
+
 
 ipcMain.handle('get-rooms', async () => {
   try {
@@ -128,6 +159,16 @@ ipcMain.handle('get-rooms', async () => {
 ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
   try {
     await db.read()
+
+    const room = db.data.rooms.find(r => r.room_id === roomId)
+    if (!room) {
+      throw new Error('Room not found')
+    }
+
+    if (!room.users.includes(username)) {
+      throw new Error('You are not a member of this room')
+    }
+
 
     const newMessage = {
       room_id: roomId,
@@ -303,6 +344,74 @@ ipcMain.handle('mark-notification-read', async (_, notificationId) => {
     return { success: true }
   } catch (error) {
     console.error('Error marking notification as read:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+
+ipcMain.handle('approve-join-request', async (_, notificationId, username, roomId) => {
+  try {
+    await db.read()
+    
+    const room = db.data.rooms.find(r => r.room_id === roomId)
+    if (!room) {
+      throw new Error('Room not found')
+    }
+
+    room.pendingRequests = room.pendingRequests.filter(u => u !== username)
+    
+    if (!room.users.includes(username)) {
+      room.users.push(username)
+    }
+
+
+    db.data.notifications.push({
+      id: `notif-${Date.now()}`,
+      from: room.created_by,
+      to: username,
+      type: 'JOIN_APPROVED',
+      roomId,
+      timestamp: Date.now(),
+      read: false,
+      message: `Your request to join ${roomId} has been approved`
+    })
+
+    await db.write()
+    return { success: true }
+  } catch (error) {
+    console.error('Error approving join request:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+
+
+ipcMain.handle('reject-join-request', async (_, notificationId, username, roomId) => {
+  try {
+    await db.read()
+    
+    const room = db.data.rooms.find(r => r.room_id === roomId)
+    if (!room) {
+      throw new Error('Room not found')
+    }
+
+    room.pendingRequests = room.pendingRequests.filter(u => u !== username)
+
+    db.data.notifications.push({
+      id: `notif-${Date.now()}`,
+      from: room.created_by,
+      to: username,
+      type: 'JOIN_REJECTED',
+      roomId,
+      timestamp: Date.now(),
+      read: false,
+      message: `Your request to join ${roomId} has been rejected`
+    })
+
+    await db.write()
+    return { success: true }
+  } catch (error) {
+    console.error('Error rejecting join request:', error)
     return { success: false, error: error.message }
   }
 })

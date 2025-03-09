@@ -12,5 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   joinRoom: (roomId, username) => ipcRenderer.invoke('join-room', roomId, username),
   addNotification: (data) => ipcRenderer.invoke('add-notification', data),
   getNotifications: (username) => ipcRenderer.invoke('get-notifications', username),
-  markNotificationRead: (id) => ipcRenderer.invoke('mark-notification-read', id)
+  markNotificationRead: (id) => ipcRenderer.invoke('mark-notification-read', id),
+  approveJoinRequest: (notificationId, username, roomId) => ipcRenderer.invoke('approve-join-request', notificationId, username, roomId),
+  rejectJoinRequest: (notificationId, username, roomId) => ipcRenderer.invoke('reject-join-request', notificationId, username, roomId),
 })
