@@ -174,7 +174,8 @@ ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
       room_id: roomId,
       timestamp: Date.now(),
       username,
-      message
+      message,
+      message_type:"CHAT-MESSAGE"
     }
 
     db.data.messages.push(newMessage)
@@ -310,7 +311,8 @@ ipcMain.handle('add-notification', async (_, { from, to, type, roomId }) => {
       type,
       roomId,
       timestamp: Date.now(),
-      read: false
+      read: false,
+      message_type:"NOTIFICATION"
     }
     
     db.data.notifications.push(notification)
@@ -373,7 +375,8 @@ ipcMain.handle('approve-join-request', async (_, notificationId, username, roomI
       roomId,
       timestamp: Date.now(),
       read: false,
-      message: `Your request to join ${roomId} has been approved`
+      message: `Your request to join ${roomId} has been approved`,
+      message_type:"NOTIFICATION"
     })
 
     await db.write()
@@ -405,7 +408,8 @@ ipcMain.handle('reject-join-request', async (_, notificationId, username, roomId
       roomId,
       timestamp: Date.now(),
       read: false,
-      message: `Your request to join ${roomId} has been rejected`
+      message: `Your request to join ${roomId} has been rejected`,
+      message_type:"NOTIFICATION"
     })
 
     await db.write()
