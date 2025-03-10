@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   TextInput, 
   Button, 
@@ -26,16 +26,16 @@ const ChatScreen = ({ roomId, username, onBack }) => {
   const [hasAccess, setHasAccess] = useState(false);
   const [isRoomOwner, setIsRoomOwner] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastMessageTimestamp, setLastMessageTimestamp] = useState(0);
 
-  // Refs for polling and scroll
+  // Refs
   const messagesEndRef = useRef(null);
-  const pollingRef = useRef(null);
   const notificationPollingRef = useRef(null);
 
   // Scroll to bottom of messages
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   // Check room access
   useEffect(() => {
@@ -61,39 +61,52 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     checkRoomAccess();
   }, [roomId, username]);
 
-
-  const loadMessages = async () => {
+  // Load messages
+  const loadMessages = useCallback(async () => {
     try {
-      const messagesList = await window.api.getMessages(roomId)
-      setMessages(messagesList)
-      scrollToBottom()
-    } catch (error) {
-      console.error('Error loading messages:', error)
-    }
-  }
+      const messagesList = await window.api.getMessages(roomId);
+      console.log('Received messages:', messagesList); // Debug log
 
-  useEffect(() => {
-    loadMessages()
-    pollingRef.current = setInterval(loadMessages, 1000)
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
+      // Check if there are new messages
+      const latestMessage = messagesList[messagesList.length - 1];
+      if (!latestMessage || latestMessage.timestamp > lastMessageTimestamp) {
+        setMessages(messagesList);
+        if (latestMessage) {
+          setLastMessageTimestamp(latestMessage.timestamp);
+        }
+        scrollToBottom();
       }
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setIsLoading(false);
     }
-  }, [roomId])
+  }, [roomId, lastMessageTimestamp, scrollToBottom]);
 
+  // Initial message load and periodic check
+  useEffect(() => {
+    loadMessages();
+    
+    const messageInterval = setInterval(() => {
+      if (!isLoading) {
+        loadMessages();
+      }
+    }, 3000);
 
-  const loadNotifications = async () => {
+    return () => clearInterval(messageInterval);
+  }, [loadMessages, isLoading]);
+
+  // Load notifications
+  const loadNotifications = useCallback(async () => {
     try {
       const notifs = await window.api.getNotifications(username);
       setNotifications(notifs);
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
-  };
+  }, [username]);
 
-
+  // Notification polling
   useEffect(() => {
     loadNotifications();
     notificationPollingRef.current = setInterval(loadNotifications, 5000);
@@ -103,9 +116,9 @@ const ChatScreen = ({ roomId, username, onBack }) => {
         clearInterval(notificationPollingRef.current);
       }
     };
-  }, [username]);
+  }, [loadNotifications]);
 
-
+  // Handle notification actions
   const handleMarkRead = async (notificationId) => {
     try {
       await window.api.markNotificationRead(notificationId);
@@ -138,7 +151,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     }
   };
 
-
+  // Handle join requests
   const handleJoinRequest = async (notification, isApproved) => {
     try {
       if (isApproved) {
@@ -176,7 +189,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     }
   };
 
- 
+  // Send message
   const sendMessage = async () => {
     if (!hasAccess) {
       notifications.show({
@@ -189,13 +202,16 @@ const ChatScreen = ({ roomId, username, onBack }) => {
 
     if (newMessage.trim()) {
       try {
-        await window.api.sendMessage({
+        const result = await window.api.sendMessage({
           roomId,
           username,
           message: newMessage.trim()
         });
-        setNewMessage('');
-        await loadMessages();
+
+        if (result.success) {
+          setNewMessage('');
+          await loadMessages(); // Immediately load new messages
+        }
       } catch (error) {
         console.error('Error sending message:', error);
         notifications.show({
@@ -207,7 +223,7 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     }
   };
 
-
+  // Render notification
   const renderNotification = (notification) => {
     if (notification.type === 'JOIN_REQUEST' && isRoomOwner) {
       return (
@@ -387,9 +403,9 @@ const ChatScreen = ({ roomId, username, onBack }) => {
           {/* Messages */}
           <Box className="messages-container">
             <Stack spacing="md">
-              {isLoading ? (
+              {isLoading && messages.length === 0 ? (
                 <Text color="dimmed" align="center">Loading messages...</Text>
-              ) : (
+              ) : messages.length > 0 ? (
                 messages.map((msg) => (
                   <motion.div
                     key={msg.timestamp}
@@ -433,6 +449,8 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                     </Box>
                   </motion.div>
                 ))
+              ) : (
+                <Text color="dimmed" align="center">No messages yet</Text>
               )}
               <div ref={messagesEndRef} />
             </Stack>

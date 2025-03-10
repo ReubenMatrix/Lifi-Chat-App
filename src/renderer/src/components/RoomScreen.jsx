@@ -9,7 +9,6 @@ import './RoomScreen.css';
 const RoomCard = ({ room, onClick, username }) => {
   const [joinStatus, setJoinStatus] = useState('none'); 
 
-
   useEffect(() => {
     const checkJoinStatus = async () => {
       try {
@@ -43,7 +42,6 @@ const RoomCard = ({ room, onClick, username }) => {
         return;
       }
 
-
       if (joinStatus === 'pending') {
         notifications.show({
           title: 'Pending Request',
@@ -53,11 +51,8 @@ const RoomCard = ({ room, onClick, username }) => {
         return;
       }
 
-
-
       const result = await window.api.joinRoom(room.room_id, username);
       
-
       if (result.success && result.notification) {
         if (result.notification.creatorUsername !== username) {
           await window.api.addNotification({
@@ -87,19 +82,6 @@ const RoomCard = ({ room, onClick, username }) => {
   };
 
 
-  const StatusBadge = () => {
-    switch (joinStatus) {
-      case 'pending':
-        return <Badge color="yellow">Pending Approval</Badge>;
-      case 'approved':
-        return <Badge color="green">Approved</Badge>;
-      case 'rejected':
-        return <Badge color="red">Rejected</Badge>;
-      default:
-        return null;
-    }
-  };
-
   return (
     <motion.div
       whileHover={{ scale: 1.03 }}
@@ -125,10 +107,6 @@ const RoomCard = ({ room, onClick, username }) => {
     </motion.div>
   );
 };
-
-
-
-
 
 
 
@@ -207,10 +185,8 @@ const RoomsScreen = ({ roomId, username, onRoomSelect }) => {
               Create New Room
             </Button>
 
-            <Button size="lg" variant="outline" color="white" className="refresh-button">
-              <Group>
-                <span>Refresh Rooms</span>
-              </Group>
+            <Button onClick={loadRooms} size="lg" variant="outline" color="white" className="refresh-button">
+                Refresh Rooms
             </Button>
 
             <Menu
