@@ -14,9 +14,14 @@ const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
   }
 
   const loadMessages = async () => {
-    const messagesList = await window.api.getMessages(roomId)
-    setMessages(messagesList)
-    scrollToBottom()
+    try {
+      const messagesList = await window.api.getMessages(roomId)
+      console.log('Loaded and decrypted messages:', messagesList)
+      setMessages(messagesList)
+      scrollToBottom()
+    } catch (error) {
+      console.error('Error loading messages:', error)
+    }
   }
 
   useEffect(() => {
@@ -32,38 +37,51 @@ const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
 
   useEffect(() => {
     if (portData) {
-      console.log('Received port data in chat:', portData) // Debug log
-      // Handle the received data as needed
-      // For example, you might want to add it to the messages
-      window.api
-        .sendMessage({
-          roomId,
-          username: 'reuben',
-          message: portData
-        })
-        .then(() => loadMessages())
+      console.log('Received port data in chat:', portData)
+      const saveMessage = async () => {
+        try {
+          // Message will be encrypted in the main process
+          const result = await window.api.sendMessage({
+            roomId,
+            username: 'reuben',
+            message: portData
+          })
+          console.log('Message save result:', result)
+          if (result.success) {
+            await loadMessages()
+          }
+        } catch (error) {
+          console.error('Error saving Arduino message:', error)
+        }
+      }
+      saveMessage()
     }
-  }, [portData])
+  }, [portData, roomId])
 
   const sendMessage = async () => {
     if (newMessage.trim()) {
       try {
-        // First try to send via serial port
+        // First try to send via serial port with encryption
         if (selectedPort) {
-          console.log('Attempting to write to port:', newMessage.trim())
-          const portResult = await window.api.writeToPort(newMessage.trim())
+          console.log('Attempting to write encrypted message to port')
+          // Send message directly without JSON wrapping
+          const portResult = await window.api.writeAndEncryptToPort(newMessage.trim())
           console.log('Port write result:', portResult)
         }
 
         // Then send to chat system
-        await window.api.sendMessage({
+        const result = await window.api.sendMessage({
           roomId,
           username,
           message: newMessage.trim()
         })
 
-        setNewMessage('')
-        await loadMessages()
+        if (result.success) {
+          setNewMessage('')
+          await loadMessages()
+        } else {
+          console.error('Failed to save message:', result.error)
+        }
       } catch (error) {
         console.error('Error sending message:', error)
       }
@@ -131,7 +149,7 @@ const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
                   Back
                 </Button>
                 <Title order={3} style={{ color: 'white' }}>
-                  {roomId.replace('Room-', 'Room ')}
+                  {`Room ${roomId}`}
                 </Title>
               </Group>
             </Group>

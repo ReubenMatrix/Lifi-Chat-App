@@ -32,26 +32,21 @@ async function getEncryptionKeys() {
 }
 
 // Encrypt Function
-async function encrypt(jsonData) {
+async function encrypt(text) {
   const { key, iv } = await getEncryptionKeys()
-
   const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
-  const jsonString = JSON.stringify(jsonData)
-  let encrypted = cipher.update(jsonString, 'utf8', 'base64')
+  let encrypted = cipher.update(text, 'utf8', 'base64')
   encrypted += cipher.final('base64')
-
   return encrypted
 }
 
 // Decrypt Function
 async function decrypt(encryptedText) {
   const { key, iv } = await getEncryptionKeys()
-
   const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
   let decrypted = decipher.update(encryptedText, 'base64', 'utf8')
   decrypted += decipher.final('utf8')
-
-  return JSON.parse(decrypted)
+  return decrypted
 }
 
 let activePort = null
@@ -119,8 +114,7 @@ ipcMain.handle('create-room', async (_, roomName) => {
     await db.read()
 
     const newRoom = {
-      room_id: roomName,
-      created_at: Date.now()
+      room_id: roomName
     }
 
     db.data.rooms.push(newRoom)
@@ -147,19 +141,27 @@ ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
   try {
     await db.read()
 
+    // Encrypt the message before storing
+    const encryptedMessage = await encrypt(message)
+
     const newMessage = {
       room_id: roomId,
       timestamp: Date.now(),
       username,
-      message
+      message: encryptedMessage // Store encrypted message
+    }
+
+    if (!db.data.messages) {
+      db.data.messages = []
     }
 
     db.data.messages.push(newMessage)
     await db.write()
 
+    console.log('Encrypted message saved:', newMessage)
     return { success: true, timestamp: newMessage.timestamp }
   } catch (error) {
-    console.error('Error sending message:', error)
+    console.error('Error saving message:', error)
     return { success: false, error: error.message }
   }
 })
@@ -168,9 +170,19 @@ ipcMain.handle('get-messages', async (_, roomId) => {
   try {
     await db.read()
 
-    return db.data.messages
+    const messages = db.data.messages
       .filter((msg) => msg.room_id === roomId)
       .sort((a, b) => a.timestamp - b.timestamp)
+
+    // Decrypt all messages
+    const decryptedMessages = await Promise.all(
+      messages.map(async (msg) => ({
+        ...msg,
+        message: await decrypt(msg.message) // Decrypt only the message content
+      }))
+    )
+
+    return decryptedMessages
   } catch (error) {
     console.error('Error getting messages:', error)
     return []
@@ -348,25 +360,35 @@ ipcMain.handle('serial:read', async () => {
 ipcMain.handle('serial:decrypt-read', async () => {
   try {
     if (!activePort || !activePort.isOpen) {
-      throw new Error('No active port connection')
+      return { success: false, error: 'No active port connection' }
     }
 
-    return new Promise((resolve, reject) => {
-      parser.once('data', async (encryptedData) => {
+    return new Promise((resolve) => {
+      const dataHandler = async (data) => {
         try {
-          const decryptedData = await decrypt(encryptedData)
-          resolve({ success: true, data: decryptedData })
+          console.log('Raw data received:', data)
+          if (data && data.trim()) {
+            const decryptedData = await decrypt(data.trim())
+            console.log('Decrypted data:', decryptedData)
+            parser.removeListener('data', dataHandler)
+            resolve({ success: true, data: decryptedData })
+          }
         } catch (error) {
-          console.error('Error decrypting data:', error)
-          reject({ success: false, error: 'Failed to decrypt data' })
+          console.error('Decryption error:', error)
+          parser.removeListener('data', dataHandler)
+          resolve({ success: false, error: 'Failed to decrypt data' })
         }
-      })
+      }
+
+      parser.once('data', dataHandler)
 
       setTimeout(() => {
-        reject({ success: false, error: 'Read timeout' })
-      }, 1000)
+        parser.removeListener('data', dataHandler)
+        resolve({ success: true, data: null })
+      }, 2000)
     })
   } catch (error) {
+    console.error('Read error:', error)
     return { success: false, error: error.message }
   }
 })
@@ -378,6 +400,7 @@ ipcMain.handle('serial:encrypt-write', async (_, data) => {
     }
 
     const encryptedData = await encrypt(data)
+    console.log('Sending encrypted data:', encryptedData)
 
     return new Promise((resolve, reject) => {
       activePort.write(encryptedData + '\r\n', (error) => {
@@ -385,7 +408,10 @@ ipcMain.handle('serial:encrypt-write', async (_, data) => {
           console.error('Write error:', error)
           reject({ success: false, error: error.message })
         } else {
-          resolve({ success: true })
+          activePort.drain(() => {
+            console.log('Write completed')
+            resolve({ success: true })
+          })
         }
       })
     })

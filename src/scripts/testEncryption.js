@@ -2,13 +2,8 @@ const { encrypt, decrypt } = require('../main/cryptoHelper')
 
 async function testEncryption() {
   const mssg = {
-    type: 'CHAT-MESSAGE',
-    data: {
-      room_id: 'Room-1739857968879',
-      timestamp: 1739858328845,
-      username: 'reuben',
-      message: 'GWGSW'
-    }
+    type: 'chat',
+    message: 'newMessage.trim()',
   }
 
   console.log('🔹 Original JSON:', mssg)

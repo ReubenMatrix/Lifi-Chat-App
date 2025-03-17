@@ -65,7 +65,7 @@ const RoomCard = ({ room, onClick }) => (
       <Stack spacing="md" align="center" style={{ zIndex: 1 }}>
         <FiMessageSquare size={40} color="#fff" />
         <Title order={3} style={{ color: '#fff', textAlign: 'center' }}>
-          {room.room_id.replace('Room-', 'Room ')}
+          {`Room ${room.room_id}`}
         </Title>
         <Group spacing="xs" align="center">
           <FiUsers size={16} color="#fff" />
@@ -109,7 +109,7 @@ const RoomsScreen = ({ onJoinRoom, onPortSelect }) => {
   }, [])
 
   const createRoom = async () => {
-    const roomName = `Room-${Date.now()}`
+    const roomName = `${Date.now()}`
     await window.api.createRoom(roomName)
     await loadRooms()
   }

@@ -43,9 +43,9 @@ const App = () => {
       if (!selectedPort) return
 
       try {
-        const result = await window.api.readFromPort()
+        const result = await window.api.readAndDecryptFromPort()
         if (result.success && result.data && isSubscribed) {
-          console.log('Read data:', result.data) // Debug log
+          console.log('Decrypted data:', result.data)
           setPortData(result.data)
         }
       } catch (error) {
@@ -54,10 +54,8 @@ const App = () => {
     }
 
     if (selectedPort) {
-      // Initial read
       readFromPort()
-      // Set up interval for continuous reading
-      readInterval = setInterval(readFromPort, 100)
+      readInterval = setInterval(readFromPort, 1000)
     }
 
     return () => {
