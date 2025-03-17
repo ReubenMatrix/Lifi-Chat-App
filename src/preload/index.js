@@ -8,5 +8,11 @@ contextBridge.exposeInMainWorld('api', {
   getRooms: () => ipcRenderer.invoke('get-rooms'),
   sendMessage: (data) => ipcRenderer.invoke('send-message', data),
   getMessages: (roomId) => ipcRenderer.invoke('get-messages', roomId),
-  scanPorts: () => ipcRenderer.invoke('scan-ports')
+  scanPorts: () => ipcRenderer.invoke('scan-ports'),
+  initializePort: (portName) => ipcRenderer.invoke('serial:initialize', portName),
+  readFromPort: () => ipcRenderer.invoke('serial:read'),
+  writeToPort: (data) => ipcRenderer.invoke('serial:write', data),
+  readAndDecryptFromPort: () => ipcRenderer.invoke('serial:decrypt-read'),
+  writeAndEncryptToPort: (data) => ipcRenderer.invoke('serial:encrypt-write', data),
+  closePort: () => ipcRenderer.invoke('serial:close')
 })

@@ -3,7 +3,7 @@ import { TextInput, Button, Stack, Paper, Group, Title, Container, Box, Text } f
 import { motion } from 'framer-motion'
 import { FiArrowLeft, FiSend } from 'react-icons/fi'
 
-const ChatScreen = ({ roomId, username, onBack }) => {
+const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const messagesEndRef = useRef(null)
@@ -30,29 +30,57 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     }
   }, [roomId])
 
+  useEffect(() => {
+    if (portData) {
+      console.log('Received port data in chat:', portData) // Debug log
+      // Handle the received data as needed
+      // For example, you might want to add it to the messages
+      window.api
+        .sendMessage({
+          roomId,
+          username: 'reuben',
+          message: portData
+        })
+        .then(() => loadMessages())
+    }
+  }, [portData])
+
   const sendMessage = async () => {
     if (newMessage.trim()) {
-      await window.api.sendMessage({
-        roomId,
-        username,
-        message: newMessage.trim()
-      })
-      setNewMessage('')
-      await loadMessages()
+      try {
+        // First try to send via serial port
+        if (selectedPort) {
+          console.log('Attempting to write to port:', newMessage.trim())
+          const portResult = await window.api.writeToPort(newMessage.trim())
+          console.log('Port write result:', portResult)
+        }
+
+        // Then send to chat system
+        await window.api.sendMessage({
+          roomId,
+          username,
+          message: newMessage.trim()
+        })
+
+        setNewMessage('')
+        await loadMessages()
+      } catch (error) {
+        console.error('Error sending message:', error)
+      }
     }
   }
 
   return (
-    <div 
-      style={{ 
+    <div
+      style={{
         minHeight: '100vh',
         padding: '2rem',
-        position: 'relative',
+        position: 'relative'
       }}
     >
-      <Container 
-        size="lg" 
-        style={{ 
+      <Container
+        size="lg"
+        style={{
           height: 'calc(100vh - 4rem)',
           display: 'flex',
           flexDirection: 'column'
@@ -109,13 +137,12 @@ const ChatScreen = ({ roomId, username, onBack }) => {
             </Group>
           </Paper>
 
-
           <Box
             style={{
               flex: 1,
               overflowY: 'auto',
               padding: '1rem',
-              paddingBottom: '80px', 
+              paddingBottom: '80px'
             }}
             className="messages-container"
           >
@@ -131,11 +158,11 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                   }}
                 >
                   <Box>
-                    <Text 
-                      size="xs" 
-                      color="white" 
-                      style={{ 
-                        marginBottom: '4px', 
+                    <Text
+                      size="xs"
+                      color="white"
+                      style={{
+                        marginBottom: '4px',
                         opacity: 0.7,
                         textAlign: msg.username === username ? 'right' : 'left'
                       }}
@@ -145,13 +172,13 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                     <Paper
                       p="md"
                       style={{
-                        background: msg.username === username 
-                          ? 'linear-gradient(45deg, #FF6B6B 30%, #FFE66D 90%)'
-                          : 'rgba(255, 255, 255, 0.1)',
+                        background:
+                          msg.username === username
+                            ? 'linear-gradient(45deg, #FF6B6B 30%, #FFE66D 90%)'
+                            : 'rgba(255, 255, 255, 0.1)',
                         color: 'white',
-                        borderRadius: msg.username === username 
-                          ? '15px 15px 0 15px'
-                          : '15px 15px 15px 0',
+                        borderRadius:
+                          msg.username === username ? '15px 15px 0 15px' : '15px 15px 15px 0',
                         backdropFilter: 'blur(10px)',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
@@ -159,11 +186,11 @@ const ChatScreen = ({ roomId, username, onBack }) => {
                     >
                       <Text style={{ padding: '5px', wordBreak: 'break-word' }}>{msg.message}</Text>
                     </Paper>
-                    <Text 
-                      size="xs" 
-                      color="white" 
-                      style={{ 
-                        marginTop: '4px', 
+                    <Text
+                      size="xs"
+                      color="white"
+                      style={{
+                        marginTop: '4px',
                         opacity: 0.5,
                         textAlign: msg.username === username ? 'right' : 'left'
                       }}
@@ -176,7 +203,6 @@ const ChatScreen = ({ roomId, username, onBack }) => {
               <div ref={messagesEndRef} />
             </Stack>
           </Box>
-
 
           <Paper
             style={{
@@ -191,13 +217,17 @@ const ChatScreen = ({ roomId, username, onBack }) => {
               zIndex: 2
             }}
           >
-            <Group spacing="sm" align="center" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
+            <Group
+              spacing="sm"
+              align="center"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
               <TextInput
-                placeholder="Type a message..."
+                placeholder={selectedPort ? 'Type a message...' : 'Connect to a port'}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
@@ -240,8 +270,5 @@ const ChatScreen = ({ roomId, username, onBack }) => {
     </div>
   )
 }
-
-
-
 
 export default ChatScreen

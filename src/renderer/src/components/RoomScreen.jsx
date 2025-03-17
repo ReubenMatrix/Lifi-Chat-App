@@ -78,7 +78,7 @@ const RoomCard = ({ room, onClick }) => (
   </motion.div>
 )
 
-const RoomsScreen = ({ onJoinRoom }) => {
+const RoomsScreen = ({ onJoinRoom, onPortSelect }) => {
   const [rooms, setRooms] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [listPorts, setListPorts] = useState([])
@@ -289,6 +289,7 @@ const RoomsScreen = ({ onJoinRoom }) => {
                         cursor: 'pointer'
                       }}
                       onClick={() => {
+                        onPortSelect(element)
                         console.log(element)
                       }}
                     >

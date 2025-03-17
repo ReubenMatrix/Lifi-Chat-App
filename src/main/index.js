@@ -4,7 +4,58 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 import path from 'path'
 const { SerialPort } = require('serialport')
+const { ReadlineParser } = require('@serialport/parser-readline')
+const keytar = require('keytar')
+const crypto = require('crypto')
 
+const SERVICE_NAME = 'LumiChat'
+const KEY_NAME = 'encryption_key'
+const IV_NAME = 'encryption_iv'
+
+const FIXED_KEY = '0123456789abcde89abcf01234567def'
+const FIXED_IV = 'abc87654def93210'
+
+async function initializeKeys() {
+  await keytar.setPassword(SERVICE_NAME, KEY_NAME, FIXED_KEY)
+  await keytar.setPassword(SERVICE_NAME, IV_NAME, FIXED_IV)
+}
+
+async function getEncryptionKeys() {
+  const key = await keytar.getPassword(SERVICE_NAME, KEY_NAME)
+  const iv = await keytar.getPassword(SERVICE_NAME, IV_NAME)
+
+  if (!key || !iv) {
+    throw new Error('Encryption key or IV not found. Run initializeKeys() first.')
+  }
+
+  return { key: Buffer.from(key, 'utf8'), iv: Buffer.from(iv, 'utf8') }
+}
+
+// Encrypt Function
+async function encrypt(jsonData) {
+  const { key, iv } = await getEncryptionKeys()
+
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
+  const jsonString = JSON.stringify(jsonData)
+  let encrypted = cipher.update(jsonString, 'utf8', 'base64')
+  encrypted += cipher.final('base64')
+
+  return encrypted
+}
+
+// Decrypt Function
+async function decrypt(encryptedText) {
+  const { key, iv } = await getEncryptionKeys()
+
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
+  let decrypted = decipher.update(encryptedText, 'base64', 'utf8')
+  decrypted += decipher.final('utf8')
+
+  return JSON.parse(decrypted)
+}
+
+let activePort = null
+let parser = null
 const projectRoot = process.cwd()
 const dbFile = path.join(projectRoot, 'data', 'db.json')
 
@@ -222,5 +273,160 @@ ipcMain.handle('scan-ports', async () => {
     return 'NO PORTS Detected'
   } catch (error) {
     return error.message
+  }
+})
+
+ipcMain.handle('serial:initialize', async (_, portName) => {
+  try {
+    if (activePort) {
+      await activePort.close()
+    }
+
+    activePort = new SerialPort({
+      path: portName,
+      baudRate: 9600,
+      dataBits: 8,
+      parity: 'none',
+      stopBits: 1
+    })
+
+    parser = new ReadlineParser({ delimiter: '\r\n' })
+    activePort.pipe(parser)
+
+    return new Promise((resolve) => {
+      activePort.on('open', () => {
+        console.log('Serial port opened:', portName)
+        resolve({ success: true })
+      })
+
+      activePort.on('error', (err) => {
+        console.error('Error opening port:', err)
+        resolve({ success: false, error: err.message })
+      })
+    })
+  } catch (error) {
+    console.error('Failed to initialize port:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('serial:read', async () => {
+  return new Promise((resolve) => {
+    if (!activePort || !activePort.isOpen) {
+      resolve({ success: false, error: 'No active port connection' })
+      return
+    }
+
+    // Set up the data listener
+    const dataHandler = (data) => {
+      console.log('Received data:', data) // Debug log
+      parser.removeListener('data', dataHandler)
+      resolve({ success: true, data: data.toString() })
+    }
+
+    // Set up error handler
+    const errorHandler = (error) => {
+      console.error('Port read error:', error)
+      parser.removeListener('data', dataHandler)
+      parser.removeListener('error', errorHandler)
+      resolve({ success: false, error: error.message })
+    }
+
+    // Add listeners
+    parser.once('data', dataHandler)
+    parser.once('error', errorHandler)
+
+    // Set timeout
+    setTimeout(() => {
+      parser.removeListener('data', dataHandler)
+      parser.removeListener('error', errorHandler)
+      resolve({ success: true, data: null }) // Return null instead of error on timeout
+    }, 1000)
+  })
+})
+
+ipcMain.handle('serial:decrypt-read', async () => {
+  try {
+    if (!activePort || !activePort.isOpen) {
+      throw new Error('No active port connection')
+    }
+
+    return new Promise((resolve, reject) => {
+      parser.once('data', async (encryptedData) => {
+        try {
+          const decryptedData = await decrypt(encryptedData)
+          resolve({ success: true, data: decryptedData })
+        } catch (error) {
+          console.error('Error decrypting data:', error)
+          reject({ success: false, error: 'Failed to decrypt data' })
+        }
+      })
+
+      setTimeout(() => {
+        reject({ success: false, error: 'Read timeout' })
+      }, 1000)
+    })
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('serial:encrypt-write', async (_, data) => {
+  try {
+    if (!activePort || !activePort.isOpen) {
+      throw new Error('No active port connection')
+    }
+
+    const encryptedData = await encrypt(data)
+
+    return new Promise((resolve, reject) => {
+      activePort.write(encryptedData + '\r\n', (error) => {
+        if (error) {
+          console.error('Write error:', error)
+          reject({ success: false, error: error.message })
+        } else {
+          resolve({ success: true })
+        }
+      })
+    })
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('serial:write', (_, data) => {
+  return new Promise((resolve) => {
+    if (!activePort || !activePort.isOpen) {
+      console.error('No active port connection')
+      resolve({ success: false, error: 'No active port connection' })
+      return
+    }
+
+    console.log('Writing to port:', data)
+    activePort.write(data + '\r\n', (error) => {
+      if (error) {
+        console.error('Write error:', error)
+        resolve({ success: false, error: error.message })
+      } else {
+        activePort.drain(() => {
+          console.log('Write completed')
+          resolve({ success: true })
+        })
+      }
+    })
+  })
+})
+
+ipcMain.handle('serial:close', async () => {
+  try {
+    if (activePort && activePort.isOpen) {
+      await activePort.close()
+      activePort = null
+      parser = null
+      return { success: true }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
   }
 })
