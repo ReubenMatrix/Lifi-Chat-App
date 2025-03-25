@@ -365,6 +365,7 @@ ipcMain.handle('serial:decrypt-read', async () => {
 
     return new Promise((resolve) => {
       const dataHandler = async (data) => {
+        
         try {
           console.log('Raw data received:', data)
           if (data && data.trim()) {
