@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('api', {
   readFromPort: () => ipcRenderer.invoke('serial:read'),
   writeToPort: (data) => ipcRenderer.invoke('serial:write', data),
   readAndDecryptFromPort: () => ipcRenderer.invoke('serial:decrypt-read'),
-  writeAndEncryptToPort: (data) => ipcRenderer.invoke('serial:encrypt-write', data),
+  writeAndEncryptToPort: (data, variant) =>
+    ipcRenderer.invoke('serial:encrypt-write', data, variant),
   closePort: () => ipcRenderer.invoke('serial:close')
 })

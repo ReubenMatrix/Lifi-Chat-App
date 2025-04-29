@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { 
-  TextInput, 
-  Button, 
-  Stack, 
-  Paper, 
-  Group, 
-  Title, 
-  Container, 
-  Box, 
-  Text, 
-} from '@mantine/core'
+import { TextInput, Button, Stack, Paper, Group, Title, Container, Box, Text } from '@mantine/core'
 import { motion } from 'framer-motion'
 import { FiArrowLeft, FiSend, FiLock } from 'react-icons/fi'
 
@@ -48,14 +38,14 @@ const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
 
   useEffect(() => {
     if (portData) {
-      console.log('Received port data in chat:', portData)
+      console.log('Received port data in chat:', portData.data)
       const saveMessage = async () => {
         try {
           const result = await window.api.sendMessage({
             roomId,
             username: 'rohan',
-            encryptionType: 'AES-256',
-            message: portData
+            encryptionType: portData.encryptionType,
+            message: portData.data
           })
           console.log('Message save result:', result)
           if (result.success) {
@@ -75,7 +65,10 @@ const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
         // First try to send via serial port with encryption
         if (selectedPort) {
           console.log('Attempting to write encrypted message to port')
-          const portResult = await window.api.writeAndEncryptToPort(newMessage.trim())
+          const portResult = await window.api.writeAndEncryptToPort(
+            newMessage.trim(),
+            encryptionMethod
+          )
           console.log('Port write result:', portResult)
         }
 
@@ -114,131 +107,131 @@ const ChatScreen = ({ roomId, username, selectedPort, portData, onBack }) => {
         position: 'relative'
       }}
     >
-   {menuOpened && (
-  <div
-    style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)', // Slightly darker overlay
-      zIndex: 1000,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backdropFilter: 'blur(5px)', // Add blur effect
-      pointerEvents: 'auto'
-    }}
-    onClick={() => setMenuOpened(false)}
-  >
-    <div
-      style={{
-        borderRadius: '15px', // More rounded corners
-        boxShadow: '0 15px 35px rgba(0,0,0,0.2)', // Enhanced shadow
-        padding: '25px',
-        width: '350px', // Slightly wider
-        maxWidth: '90%',
-        transform: 'scale(1.05)', // Slight scale effect
-        transition: 'transform 0.3s ease', // Smooth scale transition
-        border: '1px solid rgba(0,0,0,0.05)' // Subtle border
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        e.target.style.pointerEvents = 'auto';
-      }}
-    >
-      <Text 
-        size="lg" 
-        fw={700} 
-        ta="center" 
-        mb={20}
-        c="dark.8"
-        style={{
-          letterSpacing: '0.5px', // Slight letter spacing
-          textTransform: 'uppercase' // Uppercase title
-        }}
-      >
-        Encryption Methods
-      </Text>
-      
-      <Stack spacing="md" style={{display: 'flex', flexDirection: 'column'}}>
-        <Button 
-          variant="gradient"
-          gradient={{ from: 'blue', to: 'cyan', deg: 45 }}
-          fullWidth 
-          leftSection={<FiLock />}
-          onClick={(e) => {
-            e.stopPropagation();
-            sendEncryptedMessage('AES-128');
-          }}
+      {menuOpened && (
+        <div
           style={{
-            height: '55px',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: 600,
-            boxShadow: '0 4px 10px rgba(0,0,255,0.2)' // Blue shadow
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)', // Slightly darker overlay
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backdropFilter: 'blur(5px)', // Add blur effect
+            pointerEvents: 'auto'
           }}
+          onClick={() => setMenuOpened(false)}
         >
-          AES 128-bit Encryption
-        </Button>
-        
-        <Button 
-          variant="gradient"
-          gradient={{ from: 'green', to: 'lime', deg: 45 }}
-          fullWidth 
-          leftSection={<FiLock />}
-          onClick={(e) => {
-            e.stopPropagation();
-            sendEncryptedMessage('AES-192');
-          }}
-          style={{
-            height: '55px',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: 600,
-            boxShadow: '0 4px 10px rgba(0,255,0,0.2)' // Green shadow
-          }}
-        >
-          AES 192-bit Encryption
-        </Button>
-        
-        <Button 
-          variant="gradient"
-          gradient={{ from: 'violet', to: 'pink', deg: 45 }}
-          fullWidth 
-          leftSection={<FiLock />}
-          onClick={(e) => {
-            e.stopPropagation();
-            sendEncryptedMessage('AES-256');
-          }}
-          style={{
-            height: '55px',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: 600,
-            boxShadow: '0 4px 10px rgba(255,0,255,0.2)' // Violet shadow
-          }}
-        >
-          AES 256-bit Encryption
-        </Button>
-      </Stack>
+          <div
+            style={{
+              borderRadius: '15px', // More rounded corners
+              boxShadow: '0 15px 35px rgba(0,0,0,0.2)', // Enhanced shadow
+              padding: '25px',
+              width: '350px', // Slightly wider
+              maxWidth: '90%',
+              transform: 'scale(1.05)', // Slight scale effect
+              transition: 'transform 0.3s ease', // Smooth scale transition
+              border: '1px solid rgba(0,0,0,0.05)' // Subtle border
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.target.style.pointerEvents = 'auto'
+            }}
+          >
+            <Text
+              size="lg"
+              fw={700}
+              ta="center"
+              mb={20}
+              c="dark.8"
+              style={{
+                letterSpacing: '0.5px', // Slight letter spacing
+                textTransform: 'uppercase' // Uppercase title
+              }}
+            >
+              Encryption Methods
+            </Text>
 
-      <Text 
-        size="xs" 
-        ta="center" 
-        mt={15}
-        c="dimmed"
-        style={{
-          fontStyle: 'italic',
-          opacity: 0.7
-        }}
-      >
-        Select an encryption method to secure your message
-      </Text>
-    </div>
-  </div>
-)}
+            <Stack spacing="md" style={{ display: 'flex', flexDirection: 'column' }}>
+              <Button
+                variant="gradient"
+                gradient={{ from: 'blue', to: 'cyan', deg: 45 }}
+                fullWidth
+                leftSection={<FiLock />}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  sendEncryptedMessage('aes-128-cbc')
+                }}
+                style={{
+                  height: '55px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 10px rgba(0,0,255,0.2)' // Blue shadow
+                }}
+              >
+                AES 128-bit Encryption
+              </Button>
+
+              <Button
+                variant="gradient"
+                gradient={{ from: 'green', to: 'lime', deg: 45 }}
+                fullWidth
+                leftSection={<FiLock />}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  sendEncryptedMessage('aes-192-cbc')
+                }}
+                style={{
+                  height: '55px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 10px rgba(0,255,0,0.2)' // Green shadow
+                }}
+              >
+                AES 192-bit Encryption
+              </Button>
+
+              <Button
+                variant="gradient"
+                gradient={{ from: 'violet', to: 'pink', deg: 45 }}
+                fullWidth
+                leftSection={<FiLock />}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  sendEncryptedMessage('aes-128-cbc')
+                }}
+                style={{
+                  height: '55px',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 10px rgba(255,0,255,0.2)' // Violet shadow
+                }}
+              >
+                AES 256-bit Encryption
+              </Button>
+            </Stack>
+
+            <Text
+              size="xs"
+              ta="center"
+              mt={15}
+              c="dimmed"
+              style={{
+                fontStyle: 'italic',
+                opacity: 0.7
+              }}
+            >
+              Select an encryption method to secure your message
+            </Text>
+          </div>
+        </div>
+      )}
       <Container
         size="lg"
         style={{

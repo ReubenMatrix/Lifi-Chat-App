@@ -3,47 +3,66 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 import path from 'path'
+import { shell } from 'electron'
 const { SerialPort } = require('serialport')
 const { ReadlineParser } = require('@serialport/parser-readline')
 const keytar = require('keytar')
 const crypto = require('crypto')
 
 const SERVICE_NAME = 'LumiChat'
-const KEY_NAME = 'encryption_key'
-const IV_NAME = 'encryption_iv'
 
-const FIXED_KEY = '0123456789abcde89abcf01234567def'
-const FIXED_IV = 'abc87654def93210'
-
-async function initializeKeys() {
-  await keytar.setPassword(SERVICE_NAME, KEY_NAME, FIXED_KEY)
-  await keytar.setPassword(SERVICE_NAME, IV_NAME, FIXED_IV)
+const keys = {
+  'aes-128-cbc_key': 'On2QEio9j4rG/l0yQ4uwMA==',
+  'aes-192-cbc_key': '5yUxinmTgtYthq8Nl1uI83bv0fpYd7JP',
+  'aes-256-cbc_key': 'AIMBanH9cb/pNdvSxmiEblKgpS7znTlM7O9+uihYNvw='
 }
 
-async function getEncryptionKeys() {
-  const key = await keytar.getPassword(SERVICE_NAME, KEY_NAME)
-  const iv = await keytar.getPassword(SERVICE_NAME, IV_NAME)
+const ivs = {
+  'aes-128-cbc_iv': 'ZeFP/Ll2Y761qNXtatmauQ==',
+  'aes-192-cbc_iv': 'tjDoMPX+4v8Q5egH9pG0Yw==',
+  'aes-256-cbc_iv': 'sUpaIBBNJz7nqCyOaDR78g=='
+}
+const variants = ['aes-128-cbc', 'aes-192-cbc', 'aes-256-cbc']
+
+async function initializeKeys() {
+  for (let variant of variants) {
+    const key = keys[`${variant}_key`]
+    const iv = ivs[`${variant}_iv`]
+
+    await keytar.setPassword(SERVICE_NAME, `${variant}_key`, key)
+    await keytar.setPassword(SERVICE_NAME, `${variant}_iv`, iv)
+  }
+}
+
+async function getEncryptionKeys(variant) {
+  const key = await keytar.getPassword(SERVICE_NAME, `${variant}_key`)
+  const iv = await keytar.getPassword(SERVICE_NAME, `${variant}_iv`)
 
   if (!key || !iv) {
-    throw new Error('Encryption key or IV not found. Run initializeKeys() first.')
+    throw new Error(
+      `Encryption key or IV not found for variant ${variant}. Run initializeKeys() first.`
+    )
   }
 
-  return { key: Buffer.from(key, 'utf8'), iv: Buffer.from(iv, 'utf8') }
+  return {
+    key: Buffer.from(key, 'base64'),
+    iv: Buffer.from(iv, 'base64')
+  }
 }
 
 // Encrypt Function
-async function encrypt(text) {
-  const { key, iv } = await getEncryptionKeys()
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
+async function encrypt(text, variant) {
+  const { key, iv } = await getEncryptionKeys(variant)
+  const cipher = crypto.createCipheriv(variant, key, iv)
   let encrypted = cipher.update(text, 'utf8', 'base64')
   encrypted += cipher.final('base64')
   return encrypted
 }
 
 // Decrypt Function
-async function decrypt(encryptedText) {
-  const { key, iv } = await getEncryptionKeys()
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv)
+async function decrypt(encryptedText, variant) {
+  const { key, iv } = await getEncryptionKeys(variant)
+  const decipher = crypto.createDecipheriv(variant, key, iv)
   let decrypted = decipher.update(encryptedText, 'base64', 'utf8')
   decrypted += decipher.final('utf8')
   return decrypted
@@ -137,18 +156,19 @@ ipcMain.handle('get-rooms', async () => {
   }
 })
 
-ipcMain.handle('send-message', async (_, { roomId, username, message }) => {
+ipcMain.handle('send-message', async (_, { roomId, username, message, encryptionType }) => {
   try {
     await db.read()
 
     // Encrypt the message before storing
-    const encryptedMessage = await encrypt(message)
+    const encryptedMessage = await encrypt(message, encryptionType)
 
     const newMessage = {
       room_id: roomId,
       timestamp: Date.now(),
       username,
-      message: encryptedMessage // Store encrypted message
+      message: encryptedMessage,
+      encryptionType: encryptionType
     }
 
     if (!db.data.messages) {
@@ -178,7 +198,7 @@ ipcMain.handle('get-messages', async (_, roomId) => {
     const decryptedMessages = await Promise.all(
       messages.map(async (msg) => ({
         ...msg,
-        message: await decrypt(msg.message) // Decrypt only the message content
+        message: await decrypt(msg.message, msg.encryptionType) // Decrypt only the message content
       }))
     )
 
@@ -220,6 +240,10 @@ app.whenReady().then(async () => {
     console.log('Initializing database...')
     await initializeDatabase()
     console.log('Database initialization complete')
+
+    console.log('Initializing keys...')
+    await initializeKeys()
+    console.log('Keys initialization complete')
 
     electronApp.setAppUserModelId('com.electron.chat')
     app.on('browser-window-created', (_, window) => {
@@ -365,14 +389,24 @@ ipcMain.handle('serial:decrypt-read', async () => {
 
     return new Promise((resolve) => {
       const dataHandler = async (data) => {
-        
         try {
           console.log('Raw data received:', data)
           if (data && data.trim()) {
-            const decryptedData = await decrypt(data.trim())
-            console.log('Decrypted data:', decryptedData)
-            parser.removeListener('data', dataHandler)
-            resolve({ success: true, data: decryptedData })
+            // Try each variant until successful decryption
+            for (const variant of variants) {
+              try {
+                const decryptedData = await decrypt(data.trim(), variant)
+                console.log('Successfully decrypted with variant:', variant)
+                parser.removeListener('data', dataHandler)
+                resolve({ success: true, data: decryptedData, encryptionType: variant })
+                return
+              } catch (error) {
+                console.log(`Failed to decrypt with ${variant}, trying next variant...`)
+                continue
+              }
+            }
+            // If we get here, none of the variants worked
+            throw new Error('Failed to decrypt with any variant')
           }
         } catch (error) {
           console.error('Decryption error:', error)
@@ -394,13 +428,13 @@ ipcMain.handle('serial:decrypt-read', async () => {
   }
 })
 
-ipcMain.handle('serial:encrypt-write', async (_, data) => {
+ipcMain.handle('serial:encrypt-write', async (_, data, encryptionType) => {
   try {
     if (!activePort || !activePort.isOpen) {
       throw new Error('No active port connection')
     }
 
-    const encryptedData = await encrypt(data)
+    const encryptedData = await encrypt(data, encryptionType)
     console.log('Sending encrypted data:', encryptedData)
 
     return new Promise((resolve, reject) => {

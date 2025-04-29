@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { MantineProvider } from '@mantine/core'
 import WelcomeScreen from './components/WelcomeScreen'
 import RoomsScreen from './components/RoomScreen'
@@ -45,8 +45,13 @@ const App = () => {
       try {
         const result = await window.api.readAndDecryptFromPort()
         if (result.success && result.data && isSubscribed) {
-          console.log('Decrypted data:', result.data)
-          setPortData(result.data)
+          console.log(
+            'Decrypted data:',
+            result.data,
+            'using encryption type:',
+            result.encryptionType
+          )
+          setPortData(result)
         }
       } catch (error) {
         console.error('Error reading from port:', error)
